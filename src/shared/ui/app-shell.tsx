@@ -15,7 +15,10 @@ export function AppShell({ children }: PropsWithChildren) {
 
           <div className="flex items-center gap-2">
             <nav className="hidden items-center gap-4 text-sm sm:flex">
-              <Link to="/" className="text-muted-foreground transition-colors hover:text-foreground">
+              <Link
+                to="/"
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
                 Getting started
               </Link>
               <Link

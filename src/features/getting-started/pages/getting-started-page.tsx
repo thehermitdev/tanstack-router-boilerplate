@@ -1,15 +1,16 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowRight, BookOpenCheck, Braces, DatabaseZap, RouteIcon, ShieldCheck } from 'lucide-react'
+import {
+  ArrowRight,
+  BookOpenCheck,
+  Braces,
+  DatabaseZap,
+  RouteIcon,
+  ShieldCheck,
+} from 'lucide-react'
 
 import { SetupTimeline } from '../components/setup-timeline'
 import { Button } from '#/shared/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '#/shared/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#/shared/ui/card'
 
 const guardrails = [
   {
@@ -20,12 +21,14 @@ const guardrails = [
   {
     icon: ShieldCheck,
     title: 'Validate every boundary',
-    description: 'Environment variables, URL search values, and API responses are parsed at runtime.',
+    description:
+      'Environment variables, URL search values, and API responses are parsed at runtime.',
   },
   {
     icon: RouteIcon,
     title: 'Routes orchestrate',
-    description: 'Routes validate, prefetch, and compose. Feature code owns the business capability.',
+    description:
+      'Routes validate, prefetch, and compose. Feature code owns the business capability.',
   },
   {
     icon: Braces,

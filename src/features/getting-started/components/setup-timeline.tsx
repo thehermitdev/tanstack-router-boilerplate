@@ -8,13 +8,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '#/shared/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#/shared/ui/card'
 
 interface SetupStep {
   command?: string
@@ -39,7 +33,8 @@ const setupSteps: Array<SetupStep> = [
   {
     icon: PackageCheck,
     title: 'Install and lock dependencies',
-    description: 'Create the dependency graph owned by the repository generated from this template.',
+    description:
+      'Create the dependency graph owned by the repository generated from this template.',
     command: 'bun install',
     tasks: [
       'Review the generated bun.lock file.',

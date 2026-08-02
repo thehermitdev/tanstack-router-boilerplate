@@ -24,10 +24,10 @@ test('renders onboarding, changes theme, and opens the users reference', async (
 
   await page.goto('/')
 
+  await expect(page.getByRole('heading', { name: /start with a clean baseline/i })).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: /start with a clean baseline/i }),
+    page.getByRole('heading', { name: /your first hour with the template/i }),
   ).toBeVisible()
-  await expect(page.getByRole('heading', { name: /your first hour with the template/i })).toBeVisible()
   await expect(page.getByText('Configure project identity')).toBeVisible()
 
   await page.getByRole('button', { name: 'Change color theme' }).click()
