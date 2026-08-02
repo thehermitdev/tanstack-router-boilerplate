@@ -267,14 +267,14 @@ Cache Policy ต้องกำหนดตาม Consistency Model ของ AP
 
 ## State Ownership
 
-| ประเภท State            | เจ้าของที่แนะนำ                         |
-| ----------------------- | --------------------------------------- |
-| Server และ Remote State | TanStack Query                          |
-| URL-addressable State   | TanStack Router Search/Path Parameters  |
+| ประเภท State            | เจ้าของที่แนะนำ                           |
+| ----------------------- | ----------------------------------------- |
+| Server และ Remote State | TanStack Query                            |
+| URL-addressable State   | TanStack Router Search/Path Parameters    |
 | Form Draft              | Local State หรือ Form Library ของ Feature |
-| Ephemeral Visual State  | React Local State                       |
-| Theme Preference        | Theme Provider                          |
-| Cross-page Client State | Global Store ที่มีเหตุผลรองรับชัดเจน   |
+| Ephemeral Visual State  | React Local State                         |
+| Theme Preference        | Theme Provider                            |
+| Cross-page Client State | Global Store ที่มีเหตุผลรองรับชัดเจน      |
 
 ไม่ควร Copy Query Data ไปเก็บใน Context หรือ Global Store เพราะจะสร้าง Source of Truth หลายชุด
 และทำให้ Cache Invalidation, Refetch และ Error Recovery ซับซ้อนโดยไม่จำเป็น
@@ -360,8 +360,7 @@ Route ควรทำหน้าที่เป็น Orchestration Layer เ�
 export const Route = createFileRoute('/orders')({
   validateSearch: (search) => ordersSearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
-  loader: ({ context, deps }) =>
-    context.queryClient.ensureQueryData(ordersListQueryOptions(deps)),
+  loader: ({ context, deps }) => context.queryClient.ensureQueryData(ordersListQueryOptions(deps)),
   component: OrdersRoute,
 })
 ```
