@@ -2,7 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { usersListQueryOptions, UsersPage } from '#/features/users'
+import { UsersPage, usersListQueryOptions } from '#/features/users'
 import { Button } from '#/shared/ui/button'
 
 const usersSearchSchema = z.object({

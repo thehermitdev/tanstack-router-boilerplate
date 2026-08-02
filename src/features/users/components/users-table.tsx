@@ -1,7 +1,7 @@
 import type { User } from '../api/contracts'
 
 interface UsersTableProps {
-  users: User[]
+  users: Array<User>
 }
 
 export function UsersTable({ users }: UsersTableProps) {

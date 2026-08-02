@@ -1,8 +1,9 @@
 import { z } from 'zod'
 
+import { usersListResponseSchema } from './contracts'
+import type { UsersListResponse } from './contracts'
 import { httpClient } from '#/shared/api/http-client'
 import { ApplicationError } from '#/shared/errors/application-error'
-import { usersListResponseSchema, type UsersListResponse } from './contracts'
 
 export interface GetUsersInput {
   page: number

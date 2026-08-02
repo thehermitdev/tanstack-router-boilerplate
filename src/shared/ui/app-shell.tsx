@@ -1,5 +1,5 @@
-import type { PropsWithChildren } from 'react'
 import { Link } from '@tanstack/react-router'
+import type { PropsWithChildren } from 'react'
 
 import { env } from '#/shared/config/env'
 

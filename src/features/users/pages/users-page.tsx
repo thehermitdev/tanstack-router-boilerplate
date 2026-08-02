@@ -1,7 +1,7 @@
+import { UsersTable } from '../components/users-table'
+import type { UsersListResponse } from '../api/contracts'
 import { Button } from '#/shared/ui/button'
 import { Card } from '#/shared/ui/card'
-import type { UsersListResponse } from '../api/contracts'
-import { UsersTable } from '../components/users-table'
 
 interface UsersPageProps {
   data: UsersListResponse
