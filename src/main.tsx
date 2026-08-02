@@ -5,6 +5,7 @@ import { RouterProvider } from '@tanstack/react-router'
 
 import { queryClient } from '#/app/query-client/query-client'
 import { router } from '#/app/router/router'
+import { ThemeProvider } from '#/shared/theme/theme-provider'
 import '#/styles/globals.css'
 
 const rootElement = document.getElementById('root')
@@ -15,8 +16,10 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme="system" storageKey="tanstack-router-boilerplate-theme">
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 )
