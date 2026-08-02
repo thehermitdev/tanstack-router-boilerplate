@@ -7,10 +7,10 @@ updates:
     groups:
       tanstack:
         patterns:
-          - "@tanstack/*"
+          - '@tanstack/*'
       testing:
         patterns:
-          - "vitest"
-          - "@testing-library/*"
-          - "@playwright/*"
-          - "msw"
+          - 'vitest'
+          - '@testing-library/*'
+          - '@playwright/*'
+          - 'msw'

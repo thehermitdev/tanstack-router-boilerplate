@@ -32,18 +32,18 @@ Detailed Thai adoption guidance: [`docs/GETTING_STARTED.th.md`](docs/GETTING_STA
 
 ## Commands
 
-| Command | Purpose |
-| --- | --- |
-| `bun run dev` | Start Vite on port 3000 |
-| `bun run routes:generate` | Generate the TanStack route tree |
-| `bun run build` | Generate routes and create a production build |
-| `bun run typecheck` | Generate routes and run TypeScript |
-| `bun run lint` | Run ESLint |
-| `bun run format:check` | Verify Prettier formatting |
-| `bun run test` | Run Vitest in watch mode |
-| `bun run test:run` | Run unit and integration tests once |
-| `bun run test:e2e` | Run Playwright |
-| `bun run check` | Run all non-E2E quality gates |
+| Command                   | Purpose                                       |
+| ------------------------- | --------------------------------------------- |
+| `bun run dev`             | Start Vite on port 3000                       |
+| `bun run routes:generate` | Generate the TanStack route tree              |
+| `bun run build`           | Generate routes and create a production build |
+| `bun run typecheck`       | Generate routes and run TypeScript            |
+| `bun run lint`            | Run ESLint                                    |
+| `bun run format:check`    | Verify Prettier formatting                    |
+| `bun run test`            | Run Vitest in watch mode                      |
+| `bun run test:run`        | Run unit and integration tests once           |
+| `bun run test:e2e`        | Run Playwright                                |
+| `bun run check`           | Run all non-E2E quality gates                 |
 
 ## Directory model
 

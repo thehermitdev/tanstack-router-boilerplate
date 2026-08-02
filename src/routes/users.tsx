@@ -19,7 +19,9 @@ export const Route = createFileRoute('/users')({
     <div className="space-y-4 rounded-xl border border-destructive/30 bg-destructive/5 p-6">
       <h1 className="font-semibold">Could not load users</h1>
       <p className="text-sm text-muted-foreground">{error.message}</p>
-      <Button variant="outline" onClick={reset}>Try again</Button>
+      <Button variant="outline" onClick={reset}>
+        Try again
+      </Button>
     </div>
   ),
   component: UsersRoute,

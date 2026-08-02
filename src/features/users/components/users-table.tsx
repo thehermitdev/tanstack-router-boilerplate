@@ -6,7 +6,11 @@ interface UsersTableProps {
 
 export function UsersTable({ users }: UsersTableProps) {
   if (users.length === 0) {
-    return <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">No users found.</p>
+    return (
+      <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
+        No users found.
+      </p>
+    )
   }
 
   return (
@@ -26,7 +30,9 @@ export function UsersTable({ users }: UsersTableProps) {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <img src={user.image} alt="" className="size-9 rounded-full bg-muted" />
-                    <span className="font-medium">{user.firstName} {user.lastName}</span>
+                    <span className="font-medium">
+                      {user.firstName} {user.lastName}
+                    </span>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{user.email}</td>

@@ -111,8 +111,7 @@ src/features/orders/
 export const Route = createFileRoute('/orders')({
   validateSearch: (search) => ordersSearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
-  loader: ({ context, deps }) =>
-    context.queryClient.ensureQueryData(ordersListQueryOptions(deps)),
+  loader: ({ context, deps }) => context.queryClient.ensureQueryData(ordersListQueryOptions(deps)),
   component: OrdersRoute,
 })
 ```

@@ -10,7 +10,11 @@ export interface GetUsersInput {
   signal?: AbortSignal
 }
 
-export async function getUsers({ page, pageSize, signal }: GetUsersInput): Promise<UsersListResponse> {
+export async function getUsers({
+  page,
+  pageSize,
+  signal,
+}: GetUsersInput): Promise<UsersListResponse> {
   const response = await httpClient.get('/users', {
     params: {
       limit: pageSize,
