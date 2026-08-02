@@ -21,7 +21,7 @@ export async function getUsers({
       limit: pageSize,
       skip: (page - 1) * pageSize,
     },
-    signal,
+    ...(signal === undefined ? {} : { signal }),
   })
 
   try {
