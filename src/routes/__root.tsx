@@ -21,7 +21,7 @@ function RootComponent() {
       <Outlet />
       {import.meta.env.DEV ? (
         <>
-          <TanStackRouterDevtools position="bottom-right" />
+          <TanStackRouterDevtools position="bottom-left" />
           <ReactQueryDevtools initialIsOpen={false} />
         </>
       ) : null}
