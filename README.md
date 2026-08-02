@@ -10,6 +10,7 @@ A production-oriented React SPA template built with Bun, TanStack Router, TanSta
 - Runtime validation for environment variables, URL search values, and API responses
 - Feature-oriented directories with enforced dependency direction
 - Tailwind CSS v4 and source-owned shadcn/ui primitives
+- Light, dark, and system themes with a persisted preference
 - Vitest, Testing Library, MSW, and Playwright
 - GitHub Actions, Dependabot, contribution, security, and agent guidelines
 - A complete `users` reference feature using DummyJSON
@@ -25,6 +26,8 @@ cp .env.example .env
 bun install
 bun run dev
 ```
+
+Open `http://localhost:3000`. The first page presents a guided setup timeline covering project identity, environment configuration, dependency locking, quality gates, architecture review, and the first pull request. The header also includes a theme selector for light, dark, and system modes.
 
 The template intentionally does not include a generated `bun.lock`. After the first install in the new repository, review and commit the generated lockfile so that the derived application has a reproducible dependency graph.
 
