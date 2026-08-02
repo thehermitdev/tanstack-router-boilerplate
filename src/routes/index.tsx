@@ -42,6 +42,7 @@ function HomePage() {
         </p>
         <Link
           to="/users"
+          search={{ page: 1, pageSize: 10 }}
           className="mt-6 inline-flex items-center gap-2 font-medium text-primary hover:underline"
         >
           Inspect the reference feature <ArrowRight className="size-4" />
