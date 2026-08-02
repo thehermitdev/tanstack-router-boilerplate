@@ -23,7 +23,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "#/*": ["src/*"]
+      "#/*": ["./src/*"]
     },
     "types": ["vite/client", "vitest/globals"]
   }
