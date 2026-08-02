@@ -530,7 +530,7 @@ usersListResponseSchema.parse(response.data)
 Cache Key ประกอบด้วย Input
 
 ```ts
-['users', 'list', { page: 2, pageSize: 10 }]
+;['users', 'list', { page: 2, pageSize: 10 }]
 ```
 
 หน้า 1 และหน้า 2 จึงไม่ชนกัน
@@ -547,14 +547,14 @@ Loader และ Component ใช้ Query Options เดียวกัน จ�
 
 State แต่ละประเภทต้องมีเจ้าของที่เหมาะสม
 
-| State | เจ้าของ | ตัวอย่าง |
-| --- | --- | --- |
-| Server State | TanStack Query | Users, Todos, API Metadata |
-| URL State | TanStack Router | Page, Page Size, Filter, Sort |
-| Form Draft | Local State หรือ Feature Form Library | Todo Text ก่อน Submit |
-| Ephemeral UI State | React Local State | Dialog, Expanded Row |
-| Theme Preference | Theme Provider + Local Storage | Light, Dark, System |
-| Cross-page Client State | Store ที่เลือกภายหลัง | Complex Editor Session |
+| State                   | เจ้าของ                               | ตัวอย่าง                      |
+| ----------------------- | ------------------------------------- | ----------------------------- |
+| Server State            | TanStack Query                        | Users, Todos, API Metadata    |
+| URL State               | TanStack Router                       | Page, Page Size, Filter, Sort |
+| Form Draft              | Local State หรือ Feature Form Library | Todo Text ก่อน Submit         |
+| Ephemeral UI State      | React Local State                     | Dialog, Expanded Row          |
+| Theme Preference        | Theme Provider + Local Storage        | Light, Dark, System           |
+| Cross-page Client State | Store ที่เลือกภายหลัง                 | Complex Editor Session        |
 
 ### เมื่อใดไม่ควรเพิ่ม Global Store
 
@@ -791,9 +791,7 @@ Error นี้หมายถึง API Response ไม่ตรงกับ Co
 Route Error Boundary แสดงข้อความปลอดภัยต่อผู้ใช้
 
 ```tsx
-errorComponent: ({ error, reset }) => (
-  <ErrorState message={error.message} onRetry={reset} />
-)
+errorComponent: ({ error, reset }) => <ErrorState message={error.message} onRetry={reset} />
 ```
 
 ระบบจริงควรส่ง Cause, Status และ Contract Details ไป Observability Tool โดยไม่แสดงข้อมูลภายในทั้งหมดต่อผู้ใช้
@@ -1061,27 +1059,27 @@ Frontend Route Guard มีหน้าที่ควบคุม Navigation �
 
 ## 19. เหตุผลที่ Tech Stack เหมาะกับสถาปัตยกรรมนี้
 
-| Tech Stack | หน้าที่ | เหตุผลที่เหมาะสม |
-| --- | --- | --- |
-| React 19 | UI Composition | Component Model ชัดเจนและทำงานกับ Suspense/Provider Ecosystem |
-| TypeScript | Static Contract | ตรวจ Dependency, Route Type, Query Input และ Component Props ก่อน Runtime |
-| Vite | Dev Server และ Build | เหมาะกับ Browser SPA, HMR เร็ว และ Plugin Integration ตรงไปตรงมา |
-| Bun | Package Manager/Script Runtime | Workflow Local และ CI กระชับ ติดตั้งและรัน Script เร็ว |
-| TanStack Router | URL และ Navigation | Type-safe Route, Search Validation, Loader, Preload และ Code Splitting |
-| TanStack Query | Server State | Cache, Deduplication, Retry, Cancellation, Invalidation และ Mutation Lifecycle |
-| Zod | Runtime Validation | เชื่อม Runtime Contract กับ TypeScript Type โดยไม่เขียนซ้ำ |
-| Axios | HTTP Transport | Config กลาง, Timeout, Interceptor, AbortSignal และ Error Metadata |
-| Tailwind CSS v4 | Styling | ใช้ Token ผ่าน CSS Variables และสร้าง UI ได้ใกล้ Component |
-| shadcn/ui | Owned UI Source | ปรับแต่งได้เต็มที่และไม่ซ่อน Source Code ไว้ใน Package |
-| Radix UI | Accessible Primitives | ให้ Interaction/ARIA Foundation โดยไม่บังคับ Visual Style |
-| Lucide React | Iconography | API สม่ำเสมอ, Tree-shakable และเหมาะกับ Component Model |
-| Vitest | Unit/Integration Test | ใช้ Toolchain ใกล้ Vite และทำงานกับ TypeScript ได้ดี |
-| Testing Library | Component Test | เน้น Behavior ที่ผู้ใช้รับรู้ ลดการผูกกับ Implementation Detail |
-| MSW | Network Mock | Mock ที่ HTTP Boundary และใช้ Client Function จริง |
-| Playwright | Browser E2E | ตรวจ Navigation, Storage, DOM และ User Journey ใน Browser จริง |
-| ESLint | Static Convention | บังคับ Import Boundary และป้องกัน Pattern ที่ผิด Architecture |
-| Prettier | Formatting | ลด Style Debate และทำให้ Diff เน้นการเปลี่ยนแปลงเชิงความหมาย |
-| Router/Query Devtools | Development Diagnostics | ตรวจ Route State, Loader, Query Key และ Cache ได้โดยตรง |
+| Tech Stack            | หน้าที่                        | เหตุผลที่เหมาะสม                                                               |
+| --------------------- | ------------------------------ | ------------------------------------------------------------------------------ |
+| React 19              | UI Composition                 | Component Model ชัดเจนและทำงานกับ Suspense/Provider Ecosystem                  |
+| TypeScript            | Static Contract                | ตรวจ Dependency, Route Type, Query Input และ Component Props ก่อน Runtime      |
+| Vite                  | Dev Server และ Build           | เหมาะกับ Browser SPA, HMR เร็ว และ Plugin Integration ตรงไปตรงมา               |
+| Bun                   | Package Manager/Script Runtime | Workflow Local และ CI กระชับ ติดตั้งและรัน Script เร็ว                         |
+| TanStack Router       | URL และ Navigation             | Type-safe Route, Search Validation, Loader, Preload และ Code Splitting         |
+| TanStack Query        | Server State                   | Cache, Deduplication, Retry, Cancellation, Invalidation และ Mutation Lifecycle |
+| Zod                   | Runtime Validation             | เชื่อม Runtime Contract กับ TypeScript Type โดยไม่เขียนซ้ำ                     |
+| Axios                 | HTTP Transport                 | Config กลาง, Timeout, Interceptor, AbortSignal และ Error Metadata              |
+| Tailwind CSS v4       | Styling                        | ใช้ Token ผ่าน CSS Variables และสร้าง UI ได้ใกล้ Component                     |
+| shadcn/ui             | Owned UI Source                | ปรับแต่งได้เต็มที่และไม่ซ่อน Source Code ไว้ใน Package                         |
+| Radix UI              | Accessible Primitives          | ให้ Interaction/ARIA Foundation โดยไม่บังคับ Visual Style                      |
+| Lucide React          | Iconography                    | API สม่ำเสมอ, Tree-shakable และเหมาะกับ Component Model                        |
+| Vitest                | Unit/Integration Test          | ใช้ Toolchain ใกล้ Vite และทำงานกับ TypeScript ได้ดี                           |
+| Testing Library       | Component Test                 | เน้น Behavior ที่ผู้ใช้รับรู้ ลดการผูกกับ Implementation Detail                |
+| MSW                   | Network Mock                   | Mock ที่ HTTP Boundary และใช้ Client Function จริง                             |
+| Playwright            | Browser E2E                    | ตรวจ Navigation, Storage, DOM และ User Journey ใน Browser จริง                 |
+| ESLint                | Static Convention              | บังคับ Import Boundary และป้องกัน Pattern ที่ผิด Architecture                  |
+| Prettier              | Formatting                     | ลด Style Debate และทำให้ Diff เน้นการเปลี่ยนแปลงเชิงความหมาย                   |
+| Router/Query Devtools | Development Diagnostics        | ตรวจ Route State, Loader, Query Key และ Cache ได้โดยตรง                        |
 
 Tech Stack เหล่านี้ไม่ควรทำหน้าที่ทับซ้อนกัน
 

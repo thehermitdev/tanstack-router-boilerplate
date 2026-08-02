@@ -20,17 +20,17 @@
 
 ## 1. API ที่ Tutorial นี้ครอบคลุม
 
-| ความสามารถ | Method | Endpoint | จุดที่นำไปใช้ |
-| --- | --- | --- | --- |
-| รายการ Todos | `GET` | `/todos` | List Page |
-| Todo รายการเดียว | `GET` | `/todos/:id` | Detail Page |
-| สุ่ม Todo หนึ่งรายการ | `GET` | `/todos/random` | Random Panel |
-| สุ่ม Todo หลายรายการ | `GET` | `/todos/random/:count` | Random Panel สูงสุด 10 รายการ |
-| Limit และ Skip | `GET` | `/todos?limit=...&skip=...` | Server Pagination |
-| Todos ตาม User | `GET` | `/todos/user/:userId` | User Scope |
-| เพิ่ม Todo | `POST` | `/todos/add` | Create Form |
-| แก้ไข Todo | `PUT/PATCH` | `/todos/:id` | Edit Form |
-| ลบ Todo | `DELETE` | `/todos/:id` | Delete Action |
+| ความสามารถ            | Method      | Endpoint                    | จุดที่นำไปใช้                 |
+| --------------------- | ----------- | --------------------------- | ----------------------------- |
+| รายการ Todos          | `GET`       | `/todos`                    | List Page                     |
+| Todo รายการเดียว      | `GET`       | `/todos/:id`                | Detail Page                   |
+| สุ่ม Todo หนึ่งรายการ | `GET`       | `/todos/random`             | Random Panel                  |
+| สุ่ม Todo หลายรายการ  | `GET`       | `/todos/random/:count`      | Random Panel สูงสุด 10 รายการ |
+| Limit และ Skip        | `GET`       | `/todos?limit=...&skip=...` | Server Pagination             |
+| Todos ตาม User        | `GET`       | `/todos/user/:userId`       | User Scope                    |
+| เพิ่ม Todo            | `POST`      | `/todos/add`                | Create Form                   |
+| แก้ไข Todo            | `PUT/PATCH` | `/todos/:id`                | Edit Form                     |
+| ลบ Todo               | `DELETE`    | `/todos/:id`                | Delete Action                 |
 
 Tutorial ใช้ `PATCH` สำหรับ Update เพราะ Form ส่งเฉพาะ Field ที่เปลี่ยน หากระบบจริงต้อง Replace Resource ทั้งก้อนจึงใช้ `PUT`
 
@@ -316,10 +316,7 @@ export async function getRandomTodo({ signal }: RequestInput = {}): Promise<Todo
   return parseResponse(todoSchema, response.data, 'Random Todo API ส่ง Response ไม่ตรง Contract')
 }
 
-export async function getRandomTodos({
-  count,
-  signal,
-}: GetRandomTodosInput): Promise<Array<Todo>> {
+export async function getRandomTodos({ count, signal }: GetRandomTodosInput): Promise<Array<Todo>> {
   const parsedCount = randomTodoCountSchema.parse(count)
 
   if (parsedCount === 1) {
@@ -342,21 +339,14 @@ export async function addTodo({ input, signal }: AddTodoRequest): Promise<Todo> 
   return parseResponse(todoSchema, response.data, 'Add Todo API ส่ง Response ไม่ตรง Contract')
 }
 
-export async function updateTodo({
-  todoId,
-  input,
-  signal,
-}: UpdateTodoRequest): Promise<Todo> {
+export async function updateTodo({ todoId, input, signal }: UpdateTodoRequest): Promise<Todo> {
   const payload = updateTodoInputSchema.parse(input)
   const response = await httpClient.patch(`/todos/${todoId}`, payload, withSignal(signal))
 
   return parseResponse(todoSchema, response.data, 'Update Todo API ส่ง Response ไม่ตรง Contract')
 }
 
-export async function deleteTodo({
-  todoId,
-  signal,
-}: DeleteTodoRequest): Promise<DeletedTodo> {
+export async function deleteTodo({ todoId, signal }: DeleteTodoRequest): Promise<DeletedTodo> {
   const response = await httpClient.delete(`/todos/${todoId}`, withSignal(signal))
 
   return parseResponse(
@@ -534,9 +524,8 @@ export function addTodoMutationOptions(
         return
       }
 
-      queryClient.setQueryData<TodosListResponse>(
-        todosKeys.list(activeListInput),
-        (current) => (current ? prependTodo(current, createdTodo) : current),
+      queryClient.setQueryData<TodosListResponse>(todosKeys.list(activeListInput), (current) =>
+        current ? prependTodo(current, createdTodo) : current,
       )
     },
   })
@@ -549,25 +538,22 @@ export function updateTodoMutationOptions(queryClient: QueryClient, todoId: numb
     onSuccess: (updatedTodo) => {
       queryClient.setQueryData(todosKeys.detail(todoId), updatedTodo)
 
-      queryClient.setQueriesData<TodosListResponse>(
-        { queryKey: todosKeys.lists() },
-        (current) => {
-          if (!current) {
-            return current
-          }
+      queryClient.setQueriesData<TodosListResponse>({ queryKey: todosKeys.lists() }, (current) => {
+        if (!current) {
+          return current
+        }
 
-          const containsTodo = current.todos.some((todo) => todo.id === todoId)
+        const containsTodo = current.todos.some((todo) => todo.id === todoId)
 
-          if (!containsTodo) {
-            return current
-          }
+        if (!containsTodo) {
+          return current
+        }
 
-          return {
-            ...current,
-            todos: current.todos.map((todo) => (todo.id === todoId ? updatedTodo : todo)),
-          }
-        },
-      )
+        return {
+          ...current,
+          todos: current.todos.map((todo) => (todo.id === todoId ? updatedTodo : todo)),
+        }
+      })
     },
   })
 }
@@ -579,26 +565,23 @@ export function deleteTodoMutationOptions(queryClient: QueryClient, todoId: numb
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: todosKeys.detail(todoId) })
 
-      queryClient.setQueriesData<TodosListResponse>(
-        { queryKey: todosKeys.lists() },
-        (current) => {
-          if (!current) {
-            return current
-          }
+      queryClient.setQueriesData<TodosListResponse>({ queryKey: todosKeys.lists() }, (current) => {
+        if (!current) {
+          return current
+        }
 
-          const containsTodo = current.todos.some((todo) => todo.id === todoId)
+        const containsTodo = current.todos.some((todo) => todo.id === todoId)
 
-          if (!containsTodo) {
-            return current
-          }
+        if (!containsTodo) {
+          return current
+        }
 
-          return {
-            ...current,
-            todos: current.todos.filter((todo) => todo.id !== todoId),
-            total: Math.max(0, current.total - 1),
-          }
-        },
-      )
+        return {
+          ...current,
+          todos: current.todos.filter((todo) => todo.id !== todoId),
+          total: Math.max(0, current.total - 1),
+        }
+      })
     },
   })
 }
@@ -657,7 +640,7 @@ export function TodosToolbar({ search, onChange, onReset }: TodosToolbarProps) {
             onChange({
               source,
               page: 1,
-              userId: source === 'user' ? search.userId ?? 1 : null,
+              userId: source === 'user' ? (search.userId ?? 1) : null,
             })
           }}
         >
@@ -1259,8 +1242,7 @@ const defaultSearch: TodosListQueryInput = {
 export const Route = createFileRoute('/todos/')({
   validateSearch: (search) => todosSearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
-  loader: ({ context, deps }) =>
-    context.queryClient.ensureQueryData(todosListQueryOptions(deps)),
+  loader: ({ context, deps }) => context.queryClient.ensureQueryData(todosListQueryOptions(deps)),
   pendingComponent: () => <p className="py-12 text-muted-foreground">กำลังโหลด Todos…</p>,
   errorComponent: ({ error, reset }) => (
     <div className="space-y-4 rounded-xl border border-destructive/30 bg-destructive/5 p-6">
@@ -1448,7 +1430,9 @@ export const handlers = [
 
   http.get('*/todos/random/:count', ({ params }) => {
     const count = Number(params.count)
-    return HttpResponse.json(Array.from({ length: count }, (_, index) => ({ ...todo, id: index + 1 })))
+    return HttpResponse.json(
+      Array.from({ length: count }, (_, index) => ({ ...todo, id: index + 1 })),
+    )
   }),
 
   http.get('*/todos/random', () => HttpResponse.json(todo)),
