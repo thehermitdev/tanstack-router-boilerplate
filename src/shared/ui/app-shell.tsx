@@ -15,7 +15,11 @@ export function AppShell({ children }: PropsWithChildren) {
             <Link to="/" className="text-muted-foreground hover:text-foreground">
               Overview
             </Link>
-            <Link to="/users" className="text-muted-foreground hover:text-foreground">
+            <Link
+              to="/users"
+              search={{ page: 1, pageSize: 10 }}
+              className="text-muted-foreground hover:text-foreground"
+            >
               Users example
             </Link>
           </nav>
