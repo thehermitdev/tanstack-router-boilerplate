@@ -24,7 +24,7 @@ export function UsersPage({ data, page, pageSize, onPageChange }: UsersPageProps
         </p>
       </div>
 
-      <Card className="space-y-4">
+      <Card className="space-y-4 ring-0">
         <UsersTable users={data.users} />
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
