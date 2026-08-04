@@ -1,93 +1,76 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import type { PropsWithChildren } from 'react'
+import { createContext, useContext, useEffect, useState } from "react";
 
-export type Theme = 'dark' | 'light' | 'system'
+type Theme = "dark" | "light" | "system";
 
-interface ThemeProviderProps extends PropsWithChildren {
-  defaultTheme?: Theme
-  storageKey?: string
-}
+type ThemeProviderProps = {
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+  storageKey?: string;
+};
 
-interface ThemeProviderValue {
-  theme: Theme
-  setTheme: (theme: Theme) => void
-}
+type ThemeProviderState = {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+};
 
-const themeValues: Array<Theme> = ['dark', 'light', 'system']
-const ThemeProviderContext = createContext<ThemeProviderValue | null>(null)
+const initialState: ThemeProviderState = {
+  theme: "system",
+  setTheme: () => null,
+};
 
-function isTheme(value: string | null): value is Theme {
-  return value !== null && themeValues.includes(value as Theme)
-}
-
-function resolveTheme(theme: Theme, mediaQuery: MediaQueryList): Exclude<Theme, 'system'> {
-  if (theme === 'system') {
-    return mediaQuery.matches ? 'dark' : 'light'
-  }
-
-  return theme
-}
+const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export function ThemeProvider({
   children,
-  defaultTheme = 'system',
-  storageKey = 'tanstack-router-boilerplate-theme',
+  defaultTheme = "system",
+  storageKey = "vite-ui-theme",
+  ...props
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    const storedTheme = window.localStorage.getItem(storageKey)
-    return isTheme(storedTheme) ? storedTheme : defaultTheme
-  })
+  const [theme, setTheme] = useState<Theme>(
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme,
+  );
 
   useEffect(() => {
-    const root = window.document.documentElement
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const root = window.document.documentElement;
 
-    const applyTheme = () => {
-      const resolvedTheme = resolveTheme(theme, mediaQuery)
+    root.classList.remove("light", "dark");
 
-      root.classList.remove('light', 'dark')
-      root.classList.add(resolvedTheme)
-      root.style.colorScheme = resolvedTheme
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+        .matches
+        ? "dark"
+        : "light";
+
+      root.classList.add(systemTheme);
+      return;
     }
 
-    applyTheme()
+    root.classList.add(theme);
+  }, [theme]);
 
-    if (theme !== 'system') {
-      return
-    }
-
-    mediaQuery.addEventListener('change', applyTheme)
-
-    return () => {
-      mediaQuery.removeEventListener('change', applyTheme)
-    }
-  }, [theme])
-
-  const setTheme = useCallback(
-    (nextTheme: Theme) => {
-      window.localStorage.setItem(storageKey, nextTheme)
-      setThemeState(nextTheme)
+  const value = {
+    theme,
+    // eslint-disable-next-line no-shadow
+    setTheme: (theme: Theme) => {
+      localStorage.setItem(storageKey, theme);
+      setTheme(theme);
     },
-    [storageKey],
-  )
+  };
 
-  const value = useMemo(
-    () => ({
-      theme,
-      setTheme,
-    }),
-    [setTheme, theme],
-  )
-
-  return <ThemeProviderContext.Provider value={value}>{children}</ThemeProviderContext.Provider>
+  return (
+    <ThemeProviderContext.Provider {...props} value={value}>
+      {children}
+    </ThemeProviderContext.Provider>
+  );
 }
 
-export function useTheme() {
-  const context = useContext(ThemeProviderContext)
+export const useTheme = () => {
+  const context = useContext(ThemeProviderContext);
 
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider')
-  }
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (context === undefined)
+    throw new Error("useTheme must be used within a ThemeProvider");
 
-  return context
-}
+  return context;
+};

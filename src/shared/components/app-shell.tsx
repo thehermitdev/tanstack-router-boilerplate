@@ -1,8 +1,8 @@
-import { Link } from '@tanstack/react-router'
-import type { PropsWithChildren } from 'react'
+import { Link } from "@tanstack/react-router";
+import type { PropsWithChildren } from "react";
 
-import { env } from '#/shared/config/env'
-import { ModeToggle } from '#/shared/ui/mode-toggle'
+import { env } from "#/shared/config/env";
+import { ModeToggle } from "#/shared/theme/mode-toggle";
 
 export function AppShell({ children }: PropsWithChildren) {
   return (
@@ -33,7 +33,9 @@ export function AppShell({ children }: PropsWithChildren) {
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">{children}</main>
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+        {children}
+      </main>
     </div>
-  )
+  );
 }

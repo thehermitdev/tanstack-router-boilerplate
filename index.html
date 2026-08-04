@@ -3,29 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Production-oriented TanStack Router SPA starter" />
-    <script>
-      ;(() => {
-        try {
-          const storageKey = 'tanstack-router-boilerplate-theme'
-          const storedTheme = window.localStorage.getItem(storageKey)
-          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-            ? 'dark'
-            : 'light'
-          const theme =
-            storedTheme === 'dark' || storedTheme === 'light' ? storedTheme : systemTheme
-
-          document.documentElement.classList.add(theme)
-          document.documentElement.style.colorScheme = theme
-        } catch {
-          document.documentElement.classList.add('light')
-        }
-      })()
-    </script>
-    <title>TanStack Router Boilerplate</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="app"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,7 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import { GettingStartedPage } from '#/features/getting-started'
+import { GetStartedPage } from "#/features/get-started";
 
-export const Route = createFileRoute('/')({
-  component: GettingStartedPage,
-})
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [{ title: "Welcome to TanStack Router Boilerplate" }],
+  }),
+  component: GetStartedPage,
+});

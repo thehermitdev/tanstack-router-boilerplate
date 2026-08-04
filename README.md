@@ -24,7 +24,6 @@ OIDC Provider หรือระบบ Session แบบใดแบบหนึ
 - Feature Public API ผ่าน `index.ts` เพื่อลด Deep Import และ Coupling
 - Tailwind CSS v4 และ shadcn/ui Primitives ที่ Repository เป็นเจ้าของ Source Code
 - Light, Dark และ System Theme พร้อม Persist Preference
-- Vitest, Testing Library, MSW และ Playwright
 - GitHub Actions, Dependabot, Contribution Guide, Security Policy และ Agent Guidelines
 - โมดูล `users` จาก DummyJSON สำหรับใช้เป็น Reference Implementation
 - Tutorial ภาษาไทยสำหรับสร้างโมดูล `todos` ครบตั้งแต่ API Contract ถึง E2E
@@ -160,11 +159,9 @@ bun install --frozen-lockfile
 ```bash
 bun run routes:generate
 bun run check
-bun run test:e2e
 ```
 
-คำสั่งเหล่านี้ตรวจ Route Tree, Formatting, ESLint, Architecture Rules, TypeScript,
-Unit/Integration Tests, Production Build และ End-to-End Tests
+คำสั่งเหล่านี้ตรวจ Route Tree, Formatting, ESLint, Architecture Rules, TypeScript, และ Production Build 
 
 ### 5. เปิด Development Server
 
@@ -194,10 +191,7 @@ Quality Gate, Architecture Review และ Pull Request แรก พร้อ�
 | `bun run lint:fix`        | แก้ ESLint ที่แก้อัตโนมัติได้               |
 | `bun run format`          | จัดรูปแบบไฟล์ด้วย Prettier                  |
 | `bun run format:check`    | ตรวจรูปแบบไฟล์โดยไม่แก้ไข                   |
-| `bun run test`            | รัน Vitest แบบ Watch Mode                   |
-| `bun run test:run`        | รัน Unit และ Integration Test หนึ่งครั้ง    |
-| `bun run test:e2e`        | รัน Playwright End-to-End Test              |
-| `bun run check`           | รัน Format, Lint, Typecheck, Test และ Build |
+| `bun run check`           | รัน Format, Lint, Typecheck, และ Build |
 
 ## โครงสร้าง Directory
 
@@ -301,7 +295,6 @@ Repository มีโมดูล `users` จาก DummyJSON เป็น Refere
 ```text
 src/features/users/
 src/routes/users.tsx
-src/test/msw/
 ```
 
 ควรใช้ Users Feature เป็นมาตรฐานอ้างอิงจนกว่า Feature จริงตัวแรกของโปรเจ็กต์จะทำงานครบ Flow
@@ -319,7 +312,6 @@ src/test/msw/
 - Query Key Normalization
 - Cache Projection
 - URL State Normalization
-- API Integration Test, Invalid Contract Test, Component Test และ E2E
 
 Tutorial เป็นเอกสารสอนสร้างโมดูล ตัว Boilerplate ยังไม่ได้เพิ่ม Todos Feature เข้า Production Source
 
@@ -351,8 +343,7 @@ src/features/orders/
 7. เพิ่ม Route และ Validate URL Input
 8. ให้ Route Loader Prefetch ผ่าน Query Options
 9. เพิ่ม Loading, Error, Empty และ Success State
-10. เพิ่ม MSW Handler และ Test ในระดับที่เหมาะสม
-11. รัน `bun run check` และ `bun run test:e2e`
+11. รัน `bun run check`
 
 Route ควรทำหน้าที่เป็น Orchestration Layer เท่านั้น
 
@@ -472,10 +463,6 @@ Component ที่ Generate แล้วถือเป็น Source Code ข�
 ใช้ MSW Intercept Network Request ที่ Boundary จริง ช่วยทดสอบ Axios, Zod Contract,
 Error Normalization และ Query Integration โดยไม่เรียก API ภายนอก
 
-### End-to-End Test
-
-ใช้ Playwright ทดสอบ Workflow สำคัญ เช่น Navigation, Pagination, Theme Persistence และ Error Recovery
-
 Test ควร Deterministic และไม่พึ่ง Production Account, Production Credential หรือ Network ภายนอก
 
 ## Quality Gate และ CI
@@ -491,7 +478,6 @@ Prettier
   → Vite Production Build
 ```
 
-`bun run test:e2e` รัน Playwright แยกต่างหาก
 
 Pull Request พร้อม Merge เมื่อ
 
@@ -499,11 +485,8 @@ Pull Request พร้อม Merge เมื่อ
 - Architecture Boundary ไม่ถูกละเมิด
 - External Data ผ่าน Runtime Validation
 - Async Page มี Loading, Error, Empty และ Success State
-- Test ครอบคลุมความเสี่ยงในระดับที่เหมาะสม
 - เอกสารถูกอัปเดตเมื่อ Convention เปลี่ยน
 - Quality และ E2E ผ่าน
-
-แนวทางการ Contribution อยู่ที่ [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 ## การ Deploy
 

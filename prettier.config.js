@@ -1,7 +1,11 @@
+//  @ts-check
+
 /** @type {import('prettier').Config} */
-export default {
-  semi: false,
-  singleQuote: true,
-  trailingComma: 'all',
+const config = {
+  semi: true,
+  singleQuote: false,
+  trailingComma: "all",
   printWidth: 100,
-}
+};
+
+export default config;

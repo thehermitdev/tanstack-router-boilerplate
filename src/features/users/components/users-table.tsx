@@ -1,7 +1,7 @@
-import type { User } from '../api/contracts'
+import type { User } from "../api/contracts";
 
 interface UsersTableProps {
-  users: Array<User>
+  users: Array<User>;
 }
 
 export function UsersTable({ users }: UsersTableProps) {
@@ -10,7 +10,7 @@ export function UsersTable({ users }: UsersTableProps) {
       <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
         No users found.
       </p>
-    )
+    );
   }
 
   return (
@@ -29,13 +29,19 @@ export function UsersTable({ users }: UsersTableProps) {
               <tr key={user.id} className="bg-card">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <img src={user.image} alt="" className="size-9 rounded-full bg-muted" />
+                    <img
+                      src={user.image}
+                      alt=""
+                      className="size-9 rounded-full bg-muted"
+                    />
                     <span className="font-medium">
                       {user.firstName} {user.lastName}
                     </span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+                <td className="px-4 py-3 text-muted-foreground">
+                  {user.email}
+                </td>
                 <td className="px-4 py-3 capitalize">{user.role}</td>
               </tr>
             ))}
@@ -43,5 +49,5 @@ export function UsersTable({ users }: UsersTableProps) {
         </table>
       </div>
     </div>
-  )
+  );
 }
