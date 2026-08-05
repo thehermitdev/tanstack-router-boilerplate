@@ -187,6 +187,8 @@ export type UpdateTodoInput = z.infer<typeof updateTodoInputSchema>
 - Mutation Input แยกจาก Response Contract
 - `limit` ใช้ `nonnegative()` เพราะ DummyJSON รองรับ `limit=0`
 
+อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Contract](https://github.com/thehermitdev/tanstack-router-boilerplate/edit/main/docs/details/api-contract.md)
+
 ## 5. สร้าง API Client ให้ครบทุก Endpoint
 
 สร้าง `src/features/todos/api/client.ts`
