@@ -1370,7 +1370,7 @@ Route Loader และ Component ใช้ Query Options เดียวกั�
 
 ## 17. เพิ่ม Navigation
 
-แก้ `src/shared/ui/app-shell.tsx`
+แก้ `src/shared/components/ui/app-shell.tsx`
 
 เพิ่ม Link ใน `<nav>`
 
