@@ -368,6 +368,8 @@ export async function deleteTodo({ todoId, signal }: DeleteTodoRequest): Promise
 - Client คืน Domain Data ไม่คืน `AxiosResponse`
 - `PATCH` ส่งเฉพาะ Field ที่ Form แก้ไข
 
+อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Client](./details/api-client.md)
+
 ## 6. สร้าง Query Key และ Query Options
 
 สร้าง `src/features/todos/api/queries.ts`
