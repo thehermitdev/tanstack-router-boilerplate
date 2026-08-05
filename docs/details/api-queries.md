@@ -55,7 +55,7 @@ flowchart LR
 
 ถ้า Query Key ต่างกัน TanStack Query ถือว่าเป็นคนละข้อมูล แต่ถ้าเหมือนกันมันจะมองว่าเป็นข้อมูลชุดเดียวกัน แม้จะถูกเรียกจากคอมโพเนนต์หรือ Route คนละตำแหน่ง จึงเป็นเหตุผลว่าทำไม Query Key ต้องสะท้อนตัวแปรทุกตัวที่ส่งผลต่อผลลัพธ์จริง
 
-อ่านเพิ่มเติม → Query Keys
+อ่านเพิ่มเติม → [Query Keys](https://thehermitdev.notion.site/Query-Keys-3950397c16b380e6a279cb6232ca9b13)
 
 ---
 
@@ -105,7 +105,7 @@ flowchart TD
 
 จึงไม่ต้องเขียน `queryKey`, `queryFn` และ Cache Policy ซ้ำหลายที่
 
-อ่านเพิ่มเติม → Query Options
+อ่านเพิ่มเติม → [Query Options](https://thehermitdev.notion.site/Query-Options-3950397c16b380e6ace5d93581e5f7f1)
 
 ---
 
