@@ -129,49 +129,50 @@ shared/api/http-client
 สร้าง `src/features/todos/api/contracts.ts`
 
 ```ts
-import { z } from 'zod'
+import { z } from "zod";
 
 export const todoSchema = z.object({
   id: z.coerce.number().int().positive(),
   todo: z.string().trim().min(1),
   completed: z.boolean(),
   userId: z.coerce.number().int().positive(),
-})
+});
 
 export const todosListResponseSchema = z.object({
   todos: z.array(todoSchema),
   total: z.coerce.number().int().nonnegative(),
   skip: z.coerce.number().int().nonnegative(),
   limit: z.coerce.number().int().nonnegative(),
-})
+});
 
-export const randomTodosSchema = z.array(todoSchema).min(1).max(10)
+export const randomTodosSchema = z.array(todoSchema).min(1).max(10);
 
 export const createTodoInputSchema = z.object({
   todo: z.string().trim().min(3).max(300),
   completed: z.boolean(),
   userId: z.number().int().positive(),
-})
+});
 
 export const updateTodoInputSchema = createTodoInputSchema
   .pick({ todo: true, completed: true })
   .partial()
   .refine((value) => Object.keys(value).length > 0, {
-    message: 'ต้องมีข้อมูลอย่างน้อยหนึ่ง Field สำหรับการแก้ไข',
-  })
+    message: "ต้องมีข้อมูลอย่างน้อยหนึ่ง Field สำหรับการแก้ไข",
+  });
 
 export const deletedTodoSchema = todoSchema.extend({
   isDeleted: z.literal(true),
-  deletedOn: z.string().datetime(),
-})
+  deletedOn: z.iso.datetime(),
+});
 
-export const randomTodoCountSchema = z.number().int().min(1).max(10)
+export const randomTodoCountSchema = z.number().int().min(1).max(10);
 
-export type CreateTodoInput = z.infer<typeof createTodoInputSchema>
-export type DeletedTodo = z.infer<typeof deletedTodoSchema>
-export type Todo = z.infer<typeof todoSchema>
-export type TodosListResponse = z.infer<typeof todosListResponseSchema>
-export type UpdateTodoInput = z.infer<typeof updateTodoInputSchema>
+export type CreateTodoInput = z.infer<typeof createTodoInputSchema>;
+export type DeletedTodo = z.infer<typeof deletedTodoSchema>;
+export type Todo = z.infer<typeof todoSchema>;
+export type TodosListResponse = z.infer<typeof todosListResponseSchema>;
+export type UpdateTodoInput = z.infer<typeof updateTodoInputSchema>;
+
 ```
 
 เหตุผลที่ใช้ `z.coerce.number()` กับ Response
@@ -194,7 +195,7 @@ export type UpdateTodoInput = z.infer<typeof updateTodoInputSchema>
 สร้าง `src/features/todos/api/client.ts`
 
 ```ts
-import { z } from 'zod'
+import { z } from "zod";
 
 import {
   createTodoInputSchema,
@@ -204,49 +205,49 @@ import {
   todoSchema,
   todosListResponseSchema,
   updateTodoInputSchema,
-} from './contracts'
+} from "./contracts";
 import type {
   CreateTodoInput,
   DeletedTodo,
   Todo,
   TodosListResponse,
   UpdateTodoInput,
-} from './contracts'
-import { httpClient } from '#/shared/api/http-client'
-import { ApplicationError } from '#/shared/errors/application-error'
+} from "./contracts";
+import { httpClient } from "#/shared/api/http-client";
+import { ApplicationError } from "#/shared/errors/application-error";
 
 interface RequestInput {
-  signal?: AbortSignal
+  signal?: AbortSignal | undefined;
 }
 
 export interface GetTodosInput extends RequestInput {
-  page: number
-  pageSize: number
+  page: number;
+  pageSize: number;
 }
 
 export interface GetTodoInput extends RequestInput {
-  todoId: number
+  todoId: number;
 }
 
 export interface GetTodosByUserInput extends RequestInput {
-  userId: number
+  userId: number;
 }
 
 export interface GetRandomTodosInput extends RequestInput {
-  count: number
+  count: number;
 }
 
 export interface AddTodoRequest extends RequestInput {
-  input: CreateTodoInput
+  input: CreateTodoInput;
 }
 
 export interface UpdateTodoRequest extends RequestInput {
-  todoId: number
-  input: UpdateTodoInput
+  todoId: number;
+  input: UpdateTodoInput;
 }
 
 export interface DeleteTodoRequest extends RequestInput {
-  todoId: number
+  todoId: number;
 }
 
 function parseResponse<TSchema extends z.ZodType>(
@@ -255,22 +256,22 @@ function parseResponse<TSchema extends z.ZodType>(
   message: string,
 ): z.infer<TSchema> {
   try {
-    return schema.parse(data)
+    return schema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new ApplicationError(message, {
-        code: 'API_CONTRACT_ERROR',
-        details: error.flatten(),
-        cause: error,
-      })
+        code: "API_CONTRACT_ERROR",
+        details: z.flattenError(error),
+        cause: error.cause,
+      });
     }
 
-    throw error
+    throw error;
   }
 }
 
 function withSignal(signal: AbortSignal | undefined) {
-  return signal === undefined ? {} : { signal }
+  return signal === undefined ? {} : { signal };
 }
 
 export async function getTodos({
@@ -278,84 +279,84 @@ export async function getTodos({
   pageSize,
   signal,
 }: GetTodosInput): Promise<TodosListResponse> {
-  const response = await httpClient.get('/todos', {
+  const response = await httpClient.get("/todos", {
     params: {
       limit: pageSize,
       skip: (page - 1) * pageSize,
     },
     ...withSignal(signal),
-  })
+  });
 
   return parseResponse(
     todosListResponseSchema,
     response.data,
-    'Todos API ส่ง Response รายการไม่ตรง Contract',
-  )
+    "Todos API ส่ง Response รายการไม่ตรง Contract",
+  );
 }
 
 export async function getTodo({ todoId, signal }: GetTodoInput): Promise<Todo> {
-  const response = await httpClient.get(`/todos/${todoId}`, withSignal(signal))
+  const response = await httpClient.get(`/todos/${todoId}`, withSignal(signal));
 
-  return parseResponse(todoSchema, response.data, 'Todos API ส่ง Todo ไม่ตรง Contract')
+  return parseResponse(todoSchema, response.data, "Todos API ส่ง Todo ไม่ตรง Contract");
 }
 
 export async function getTodosByUser({
   userId,
   signal,
 }: GetTodosByUserInput): Promise<TodosListResponse> {
-  const response = await httpClient.get(`/todos/user/${userId}`, withSignal(signal))
+  const response = await httpClient.get(`/todos/user/${userId}`, withSignal(signal));
 
   return parseResponse(
     todosListResponseSchema,
     response.data,
-    'Todos By User API ส่ง Response ไม่ตรง Contract',
-  )
+    "Todos By User API ส่ง Response ไม่ตรง Contract",
+  );
 }
 
 export async function getRandomTodo({ signal }: RequestInput = {}): Promise<Todo> {
-  const response = await httpClient.get('/todos/random', withSignal(signal))
+  const response = await httpClient.get("/todos/random", withSignal(signal));
 
-  return parseResponse(todoSchema, response.data, 'Random Todo API ส่ง Response ไม่ตรง Contract')
+  return parseResponse(todoSchema, response.data, "Random Todo API ส่ง Response ไม่ตรง Contract");
 }
 
 export async function getRandomTodos({ count, signal }: GetRandomTodosInput): Promise<Array<Todo>> {
-  const parsedCount = randomTodoCountSchema.parse(count)
+  const parsedCount = randomTodoCountSchema.parse(count);
 
   if (parsedCount === 1) {
-    return [await getRandomTodo({ signal })]
+    return [await getRandomTodo({ signal })];
   }
 
-  const response = await httpClient.get(`/todos/random/${parsedCount}`, withSignal(signal))
+  const response = await httpClient.get(`/todos/random/${parsedCount}`, withSignal(signal));
 
   return parseResponse(
     randomTodosSchema,
     response.data,
-    'Random Todos API ส่ง Response ไม่ตรง Contract',
-  )
+    "Random Todos API ส่ง Response ไม่ตรง Contract",
+  );
 }
 
 export async function addTodo({ input, signal }: AddTodoRequest): Promise<Todo> {
-  const payload = createTodoInputSchema.parse(input)
-  const response = await httpClient.post('/todos/add', payload, withSignal(signal))
+  const payload = createTodoInputSchema.parse(input);
+  const response = await httpClient.post("/todos/add", payload, withSignal(signal));
 
-  return parseResponse(todoSchema, response.data, 'Add Todo API ส่ง Response ไม่ตรง Contract')
+  return parseResponse(todoSchema, response.data, "Add Todo API ส่ง Response ไม่ตรง Contract");
 }
 
 export async function updateTodo({ todoId, input, signal }: UpdateTodoRequest): Promise<Todo> {
-  const payload = updateTodoInputSchema.parse(input)
-  const response = await httpClient.patch(`/todos/${todoId}`, payload, withSignal(signal))
+  const payload = updateTodoInputSchema.parse(input);
+  const response = await httpClient.patch(`/todos/${todoId}`, payload, withSignal(signal));
 
-  return parseResponse(todoSchema, response.data, 'Update Todo API ส่ง Response ไม่ตรง Contract')
+  return parseResponse(todoSchema, response.data, "Update Todo API ส่ง Response ไม่ตรง Contract");
 }
 
 export async function deleteTodo({ todoId, signal }: DeleteTodoRequest): Promise<DeletedTodo> {
-  const response = await httpClient.delete(`/todos/${todoId}`, withSignal(signal))
+  const response = await httpClient.delete(`/todos/${todoId}`, withSignal(signal));
 
   return parseResponse(
     deletedTodoSchema,
     response.data,
-    'Delete Todo API ส่ง Response ไม่ตรง Contract',
-  )
+    "Delete Todo API ส่ง Response ไม่ตรง Contract",
+  );
 }
 ```
 
@@ -368,70 +369,71 @@ export async function deleteTodo({ todoId, signal }: DeleteTodoRequest): Promise
 - Client คืน Domain Data ไม่คืน `AxiosResponse`
 - `PATCH` ส่งเฉพาะ Field ที่ Form แก้ไข
 
-อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Contract](./details/api-client.md)
+อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Client](./details/api-client.md)
+
 
 ## 6. สร้าง Query Key และ Query Options
 
 สร้าง `src/features/todos/api/queries.ts`
 
 ```ts
-import { queryOptions } from '@tanstack/react-query'
+import { queryOptions } from "@tanstack/react-query";
 
-import { getTodo, getTodos, getTodosByUser } from './client'
+import { getTodo, getTodos, getTodosByUser } from "./client";
 
-export type TodosListSource = 'all' | 'user'
+export type TodosListSource = "all" | "user";
 
 export interface TodosListQueryInput {
-  page: number
-  pageSize: number
-  source: TodosListSource
-  userId: number | null
+  page: number;
+  pageSize: number;
+  source: TodosListSource;
+  userId: number | null;
 }
 
 function normalizeTodosListInput(input: TodosListQueryInput) {
-  if (input.source === 'user') {
+  if (input.source === "user") {
     return {
       source: input.source,
       userId: input.userId,
-    } as const
+    } as const;
   }
 
   return {
     source: input.source,
     page: input.page,
     pageSize: input.pageSize,
-  } as const
+  } as const;
 }
 
 export const todosKeys = {
-  all: ['todos'] as const,
-  lists: () => [...todosKeys.all, 'list'] as const,
+  all: ["todos"] as const,
+  lists: () => [...todosKeys.all, "list"] as const,
   list: (input: TodosListQueryInput) =>
     [...todosKeys.lists(), normalizeTodosListInput(input)] as const,
-  details: () => [...todosKeys.all, 'detail'] as const,
+  details: () => [...todosKeys.all, "detail"] as const,
   detail: (todoId: number) => [...todosKeys.details(), todoId] as const,
-}
+};
 
 export function todosListQueryOptions(input: TodosListQueryInput) {
   return queryOptions({
     queryKey: todosKeys.list(input),
     queryFn: ({ signal }) => {
-      if (input.source === 'user') {
+      if (input.source === "user") {
         if (input.userId === null) {
-          throw new Error('User Scope ต้องมี userId')
+          throw new Error("User Scope ต้องมี userId");
         }
 
-        return getTodosByUser({ userId: input.userId, signal })
+        return getTodosByUser({ userId: input.userId, signal });
       }
 
       return getTodos({
         page: input.page,
         pageSize: input.pageSize,
         signal,
-      })
+      });
     },
     staleTime: 60_000,
-  })
+  });
 }
 
 export function todoDetailQueryOptions(todoId: number) {
@@ -439,7 +441,7 @@ export function todoDetailQueryOptions(todoId: number) {
     queryKey: todosKeys.detail(todoId),
     queryFn: ({ signal }) => getTodo({ todoId, signal }),
     staleTime: 60_000,
-  })
+  });
 }
 ```
 
@@ -463,55 +465,57 @@ export function todoDetailQueryOptions(todoId: number) {
 
 Query Key จึงสะท้อน HTTP Resource จริง
 
+อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Queries](./details/api-queries.md)
+
 ## 7. สร้าง Mutation และ Cache Policy
 
 สร้าง `src/features/todos/api/mutations.ts`
 
 ```ts
-import { mutationOptions } from '@tanstack/react-query'
-import type { QueryClient } from '@tanstack/react-query'
+import { mutationOptions } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 
-import { addTodo, deleteTodo, getRandomTodos, updateTodo } from './client'
-import type { CreateTodoInput, Todo, TodosListResponse, UpdateTodoInput } from './contracts'
-import { todosKeys } from './queries'
-import type { TodosListQueryInput } from './queries'
+import { addTodo, deleteTodo, getRandomTodos, updateTodo } from "./client";
+import type { CreateTodoInput, Todo, TodosListResponse, UpdateTodoInput } from "./contracts";
+import { todosKeys } from "./queries";
+import type { TodosListQueryInput } from "./queries";
 
 export const todosMutationKeys = {
-  all: ['todos', 'mutation'] as const,
-  random: () => [...todosMutationKeys.all, 'random'] as const,
-  add: () => [...todosMutationKeys.all, 'add'] as const,
-  update: (todoId: number) => [...todosMutationKeys.all, 'update', todoId] as const,
-  delete: (todoId: number) => [...todosMutationKeys.all, 'delete', todoId] as const,
-}
+  all: ["todos", "mutation"] as const,
+  random: () => [...todosMutationKeys.all, "random"] as const,
+  add: () => [...todosMutationKeys.all, "add"] as const,
+  update: (todoId: number) => [...todosMutationKeys.all, "update", todoId] as const,
+  delete: (todoId: number) => [...todosMutationKeys.all, "delete", todoId] as const,
+};
 
 function shouldInsertIntoActiveList(input: TodosListQueryInput, todo: Todo) {
-  if (input.source === 'user') {
-    return input.userId === todo.userId
+  if (input.source === "user") {
+    return input.userId === todo.userId;
   }
 
-  return input.page === 1
+  return input.page === 1;
 }
 
 function prependTodo(current: TodosListResponse, todo: Todo): TodosListResponse {
   if (current.todos.some((item) => item.id === todo.id)) {
-    return current
+    return current;
   }
 
-  const nextTodos = [todo, ...current.todos]
-  const visibleTodos = current.limit > 0 ? nextTodos.slice(0, current.limit) : nextTodos
+  const nextTodos = [todo, ...current.todos];
+  const visibleTodos = current.limit > 0 ? nextTodos.slice(0, current.limit) : nextTodos;
 
   return {
     ...current,
     todos: visibleTodos,
     total: current.total + 1,
-  }
+  };
 }
 
 export function randomTodosMutationOptions() {
   return mutationOptions({
     mutationKey: todosMutationKeys.random(),
     mutationFn: (count: number) => getRandomTodos({ count }),
-  })
+  });
 }
 
 export function addTodoMutationOptions(
@@ -522,17 +526,17 @@ export function addTodoMutationOptions(
     mutationKey: todosMutationKeys.add(),
     mutationFn: (input: CreateTodoInput) => addTodo({ input }),
     onSuccess: (createdTodo) => {
-      queryClient.setQueryData(todosKeys.detail(createdTodo.id), createdTodo)
+      queryClient.setQueryData(todosKeys.detail(createdTodo.id), createdTodo);
 
       if (!shouldInsertIntoActiveList(activeListInput, createdTodo)) {
-        return
+        return;
       }
 
       queryClient.setQueryData<TodosListResponse>(todosKeys.list(activeListInput), (current) =>
         current ? prependTodo(current, createdTodo) : current,
-      )
+      );
     },
-  })
+  });
 }
 
 export function updateTodoMutationOptions(queryClient: QueryClient, todoId: number) {
@@ -540,26 +544,26 @@ export function updateTodoMutationOptions(queryClient: QueryClient, todoId: numb
     mutationKey: todosMutationKeys.update(todoId),
     mutationFn: (input: UpdateTodoInput) => updateTodo({ todoId, input }),
     onSuccess: (updatedTodo) => {
-      queryClient.setQueryData(todosKeys.detail(todoId), updatedTodo)
+      queryClient.setQueryData(todosKeys.detail(todoId), updatedTodo);
 
       queryClient.setQueriesData<TodosListResponse>({ queryKey: todosKeys.lists() }, (current) => {
         if (!current) {
-          return current
+          return current;
         }
 
-        const containsTodo = current.todos.some((todo) => todo.id === todoId)
+        const containsTodo = current.todos.some((todo) => todo.id === todoId);
 
         if (!containsTodo) {
-          return current
+          return current;
         }
 
         return {
           ...current,
           todos: current.todos.map((todo) => (todo.id === todoId ? updatedTodo : todo)),
-        }
-      })
+        };
+      });
     },
-  })
+  });
 }
 
 export function deleteTodoMutationOptions(queryClient: QueryClient, todoId: number) {
@@ -567,27 +571,27 @@ export function deleteTodoMutationOptions(queryClient: QueryClient, todoId: numb
     mutationKey: todosMutationKeys.delete(todoId),
     mutationFn: () => deleteTodo({ todoId }),
     onSuccess: () => {
-      queryClient.removeQueries({ queryKey: todosKeys.detail(todoId) })
+      queryClient.removeQueries({ queryKey: todosKeys.detail(todoId) });
 
       queryClient.setQueriesData<TodosListResponse>({ queryKey: todosKeys.lists() }, (current) => {
         if (!current) {
-          return current
+          return current;
         }
 
-        const containsTodo = current.todos.some((todo) => todo.id === todoId)
+        const containsTodo = current.todos.some((todo) => todo.id === todoId);
 
         if (!containsTodo) {
-          return current
+          return current;
         }
 
         return {
           ...current,
           todos: current.todos.filter((todo) => todo.id !== todoId),
           total: Math.max(0, current.total - 1),
-        }
-      })
+        };
+      });
     },
-  })
+  });
 }
 ```
 
@@ -613,22 +617,24 @@ export function deleteTodoMutationOptions(queryClient: QueryClient, todoId: numb
 
 การ Update Cache นี้มีผลเฉพาะ Browser Session เพราะ DummyJSON ไม่ Persist Mutation
 
+อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Mutations](./details/api-mutations.md)
+
 ## 8. สร้าง Todos Toolbar
 
 สร้าง `src/features/todos/components/todos-toolbar.tsx`
 
 ```tsx
-import type { TodosListQueryInput, TodosListSource } from '../api/queries'
-import { Button } from '#/shared/ui/button'
+import type { TodosListQueryInput, TodosListSource } from "../api/queries";
+import { Button } from "#/shared/ui/button";
 
 interface TodosToolbarProps {
-  search: TodosListQueryInput
-  onChange: (next: Partial<TodosListQueryInput>) => void
-  onReset: () => void
+  search: TodosListQueryInput;
+  onChange: (next: Partial<TodosListQueryInput>) => void;
+  onReset: () => void;
 }
 
 const inputClassName =
-  'h-9 rounded-md border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring'
+  "h-9 rounded-md border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring";
 
 export function TodosToolbar({ search, onChange, onReset }: TodosToolbarProps) {
   return (
@@ -639,13 +645,13 @@ export function TodosToolbar({ search, onChange, onReset }: TodosToolbarProps) {
           className={inputClassName}
           value={search.source}
           onChange={(event) => {
-            const source = event.target.value as TodosListSource
+            const source = event.target.value as TodosListSource;
 
             onChange({
               source,
               page: 1,
-              userId: source === 'user' ? (search.userId ?? 1) : null,
-            })
+              userId: source === "user" ? (search.userId ?? 1) : null,
+            });
           }}
         >
           <option value="all">Todos ทั้งหมด</option>
@@ -653,7 +659,7 @@ export function TodosToolbar({ search, onChange, onReset }: TodosToolbarProps) {
         </select>
       </label>
 
-      {search.source === 'user' ? (
+      {search.source === "user" ? (
         <label className="grid gap-1.5 text-sm">
           <span className="font-medium">User ID</span>
           <input
@@ -697,7 +703,7 @@ export function TodosToolbar({ search, onChange, onReset }: TodosToolbarProps) {
         </Button>
       </div>
     </div>
-  )
+  );
 }
 ```
 
@@ -713,12 +719,12 @@ export function TodosToolbar({ search, onChange, onReset }: TodosToolbarProps) {
 สร้าง `src/features/todos/components/todos-table.tsx`
 
 ```tsx
-import { Link } from '@tanstack/react-router'
+import { Link } from "@tanstack/react-router";
 
-import type { Todo } from '../api/contracts'
+import type { Todo } from "../api/contracts";
 
 interface TodosTableProps {
-  todos: Array<Todo>
+  todos: Array<Todo>;
 }
 
 export function TodosTable({ todos }: TodosTableProps) {
@@ -727,7 +733,7 @@ export function TodosTable({ todos }: TodosTableProps) {
       <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
         ไม่พบ Todo ตามเงื่อนไขที่เลือก
       </p>
-    )
+    );
   }
 
   return (
@@ -757,11 +763,11 @@ export function TodosTable({ todos }: TodosTableProps) {
                   <span
                     className={
                       todo.completed
-                        ? 'rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300'
-                        : 'rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300'
+                        ? "rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300"
+                        : "rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300"
                     }
                   >
-                    {todo.completed ? 'เสร็จแล้ว' : 'ยังไม่เสร็จ'}
+                    {todo.completed ? "เสร็จแล้ว" : "ยังไม่เสร็จ"}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">User #{todo.userId}</td>
@@ -771,7 +777,7 @@ export function TodosTable({ todos }: TodosTableProps) {
         </table>
       </div>
     </div>
-  )
+  );
 }
 ```
 
@@ -782,19 +788,19 @@ Table รับ Typed Data และไม่รู้จัก Axios, Query Cli
 สร้าง `src/features/todos/components/random-todos-panel.tsx`
 
 ```tsx
-import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 
-import { randomTodosMutationOptions } from '../api/mutations'
-import { Button } from '#/shared/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '#/shared/ui/card'
+import { randomTodosMutationOptions } from "../api/mutations";
+import { Button } from "#/shared/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "#/shared/ui/card";
 
 const selectClassName =
-  'h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring'
+  "h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function RandomTodosPanel() {
-  const [count, setCount] = useState(1)
-  const mutation = useMutation(randomTodosMutationOptions())
+  const [count, setCount] = useState(1);
+  const mutation = useMutation(randomTodosMutationOptions());
 
   return (
     <Card>
@@ -819,7 +825,7 @@ export function RandomTodosPanel() {
           </label>
 
           <Button disabled={mutation.isPending} onClick={() => mutation.mutate(count)}>
-            {mutation.isPending ? 'กำลังสุ่ม…' : 'สุ่มใหม่'}
+            {mutation.isPending ? "กำลังสุ่ม…" : "สุ่มใหม่"}
           </Button>
         </div>
 
@@ -833,7 +839,7 @@ export function RandomTodosPanel() {
               <li key={todo.id} className="rounded-lg border p-3 text-sm">
                 <p className="font-medium">{todo.todo}</p>
                 <p className="mt-1 text-muted-foreground">
-                  #{todo.id} · User #{todo.userId} · {todo.completed ? 'เสร็จแล้ว' : 'ยังไม่เสร็จ'}
+                  #{todo.id} · User #{todo.userId} · {todo.completed ? "เสร็จแล้ว" : "ยังไม่เสร็จ"}
                 </p>
               </li>
             ))}
@@ -841,7 +847,7 @@ export function RandomTodosPanel() {
         ) : null}
       </CardContent>
     </Card>
-  )
+  );
 }
 ```
 
@@ -852,38 +858,38 @@ Panel นี้ไม่ใช้ Query Cache เพราะทุก Click ต
 สร้าง `src/features/todos/components/todo-mutation-panel.tsx`
 
 ```tsx
-import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
   addTodoMutationOptions,
   deleteTodoMutationOptions,
   updateTodoMutationOptions,
-} from '../api/mutations'
-import type { Todo } from '../api/contracts'
-import type { TodosListQueryInput } from '../api/queries'
-import { Button } from '#/shared/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '#/shared/ui/card'
+} from "../api/mutations";
+import type { Todo } from "../api/contracts";
+import type { TodosListQueryInput } from "../api/queries";
+import { Button } from "#/shared/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "#/shared/ui/card";
 
 interface AddTodoPanelProps {
-  activeListInput: TodosListQueryInput
+  activeListInput: TodosListQueryInput;
 }
 
 interface EditTodoPanelProps {
-  todo: Todo
-  onDeleted: () => void
+  todo: Todo;
+  onDeleted: () => void;
 }
 
 const fieldClassName =
-  'w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring'
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function AddTodoPanel({ activeListInput }: AddTodoPanelProps) {
-  const queryClient = useQueryClient()
-  const mutation = useMutation(addTodoMutationOptions(queryClient, activeListInput))
-  const [todo, setTodo] = useState('')
-  const [completed, setCompleted] = useState(false)
-  const [userId, setUserId] = useState(activeListInput.userId ?? 1)
-  const [message, setMessage] = useState('')
+  const queryClient = useQueryClient();
+  const mutation = useMutation(addTodoMutationOptions(queryClient, activeListInput));
+  const [todo, setTodo] = useState("");
+  const [completed, setCompleted] = useState(false);
+  const [userId, setUserId] = useState(activeListInput.userId ?? 1);
+  const [message, setMessage] = useState("");
 
   return (
     <Card>
@@ -894,20 +900,20 @@ export function AddTodoPanel({ activeListInput }: AddTodoPanelProps) {
         <form
           className="grid gap-4"
           onSubmit={(event) => {
-            event.preventDefault()
-            setMessage('')
+            event.preventDefault();
+            setMessage("");
 
             mutation.mutate(
               { todo, completed, userId },
               {
                 onSuccess: (createdTodo) => {
-                  setMessage(`DummyJSON จำลองการสร้าง Todo #${createdTodo.id} สำเร็จ`)
-                  setTodo('')
-                  setCompleted(false)
+                  setMessage(`DummyJSON จำลองการสร้าง Todo #${createdTodo.id} สำเร็จ`);
+                  setTodo("");
+                  setCompleted(false);
                 },
                 onError: (error) => setMessage(error.message),
               },
-            )
+            );
           }}
         >
           <label className="grid gap-1.5 text-sm">
@@ -944,25 +950,25 @@ export function AddTodoPanel({ activeListInput }: AddTodoPanelProps) {
           </label>
 
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'กำลังเพิ่ม…' : 'เพิ่ม Todo'}
+            {mutation.isPending ? "กำลังเพิ่ม…" : "เพิ่ม Todo"}
           </Button>
 
           {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export function EditTodoPanel({ todo, onDeleted }: EditTodoPanelProps) {
-  const queryClient = useQueryClient()
-  const updateMutation = useMutation(updateTodoMutationOptions(queryClient, todo.id))
-  const deleteMutation = useMutation(deleteTodoMutationOptions(queryClient, todo.id))
-  const [text, setText] = useState(todo.todo)
-  const [completed, setCompleted] = useState(todo.completed)
-  const [message, setMessage] = useState('')
+  const queryClient = useQueryClient();
+  const updateMutation = useMutation(updateTodoMutationOptions(queryClient, todo.id));
+  const deleteMutation = useMutation(deleteTodoMutationOptions(queryClient, todo.id));
+  const [text, setText] = useState(todo.todo);
+  const [completed, setCompleted] = useState(todo.completed);
+  const [message, setMessage] = useState("");
 
-  const isPending = updateMutation.isPending || deleteMutation.isPending
+  const isPending = updateMutation.isPending || deleteMutation.isPending;
 
   return (
     <Card>
@@ -973,16 +979,16 @@ export function EditTodoPanel({ todo, onDeleted }: EditTodoPanelProps) {
         <form
           className="grid gap-4"
           onSubmit={(event) => {
-            event.preventDefault()
-            setMessage('')
+            event.preventDefault();
+            setMessage("");
 
             updateMutation.mutate(
               { todo: text, completed },
               {
-                onSuccess: () => setMessage('DummyJSON จำลองการแก้ไขสำเร็จ'),
+                onSuccess: () => setMessage("DummyJSON จำลองการแก้ไขสำเร็จ"),
                 onError: (error) => setMessage(error.message),
               },
-            )
+            );
           }}
         >
           <label className="grid gap-1.5 text-sm">
@@ -1008,7 +1014,7 @@ export function EditTodoPanel({ todo, onDeleted }: EditTodoPanelProps) {
 
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={isPending}>
-              {updateMutation.isPending ? 'กำลังบันทึก…' : 'บันทึกการแก้ไข'}
+              {updateMutation.isPending ? "กำลังบันทึก…" : "บันทึกการแก้ไข"}
             </Button>
 
             <Button
@@ -1016,20 +1022,20 @@ export function EditTodoPanel({ todo, onDeleted }: EditTodoPanelProps) {
               variant="destructive"
               disabled={isPending}
               onClick={() => {
-                const confirmed = window.confirm(`ยืนยันการลบ Todo #${todo.id}`)
+                const confirmed = window.confirm(`ยืนยันการลบ Todo #${todo.id}`);
 
                 if (!confirmed) {
-                  return
+                  return;
                 }
 
-                setMessage('')
+                setMessage("");
                 deleteMutation.mutate(undefined, {
                   onSuccess: onDeleted,
                   onError: (error) => setMessage(error.message),
-                })
+                });
               }}
             >
-              {deleteMutation.isPending ? 'กำลังลบ…' : 'ลบ Todo'}
+              {deleteMutation.isPending ? "กำลังลบ…" : "ลบ Todo"}
             </Button>
           </div>
 
@@ -1037,7 +1043,7 @@ export function EditTodoPanel({ todo, onDeleted }: EditTodoPanelProps) {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }
 ```
 
@@ -1050,25 +1056,25 @@ Create และ Edit แยก Component เพื่อให้ Hook แต�
 สร้าง `src/features/todos/pages/todos-page.tsx`
 
 ```tsx
-import { AddTodoPanel } from '../components/todo-mutation-panel'
-import { RandomTodosPanel } from '../components/random-todos-panel'
-import { TodosTable } from '../components/todos-table'
-import { TodosToolbar } from '../components/todos-toolbar'
-import type { TodosListResponse } from '../api/contracts'
-import type { TodosListQueryInput } from '../api/queries'
-import { Button } from '#/shared/ui/button'
-import { Card } from '#/shared/ui/card'
+import { AddTodoPanel } from "../components/todo-mutation-panel";
+import { RandomTodosPanel } from "../components/random-todos-panel";
+import { TodosTable } from "../components/todos-table";
+import { TodosToolbar } from "../components/todos-toolbar";
+import type { TodosListResponse } from "../api/contracts";
+import type { TodosListQueryInput } from "../api/queries";
+import { Button } from "#/shared/ui/button";
+import { Card } from "#/shared/ui/card";
 
 interface TodosPageProps {
-  data: TodosListResponse
-  search: TodosListQueryInput
-  onSearchChange: (next: Partial<TodosListQueryInput>) => void
-  onReset: () => void
+  data: TodosListResponse;
+  search: TodosListQueryInput;
+  onSearchChange: (next: Partial<TodosListQueryInput>) => void;
+  onReset: () => void;
 }
 
 export function TodosPage({ data, search, onSearchChange, onReset }: TodosPageProps) {
   const lastPage =
-    search.source === 'all' ? Math.max(1, Math.ceil(data.total / search.pageSize)) : 1
+    search.source === "all" ? Math.max(1, Math.ceil(data.total / search.pageSize)) : 1;
 
   return (
     <section className="space-y-6">
@@ -1088,12 +1094,12 @@ export function TodosPage({ data, search, onSearchChange, onReset }: TodosPagePr
 
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            {search.source === 'all'
+            {search.source === "all"
               ? `หน้า ${search.page} จาก ${lastPage} · ทั้งหมด ${data.total} รายการ`
               : `Todos ของ User #${search.userId} · ทั้งหมด ${data.total} รายการ`}
           </p>
 
-          {search.source === 'all' ? (
+          {search.source === "all" ? (
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -1121,7 +1127,7 @@ export function TodosPage({ data, search, onSearchChange, onReset }: TodosPagePr
         <RandomTodosPanel />
       </div>
     </section>
-  )
+  );
 }
 ```
 
@@ -1130,15 +1136,15 @@ export function TodosPage({ data, search, onSearchChange, onReset }: TodosPagePr
 สร้าง `src/features/todos/pages/todo-detail-page.tsx`
 
 ```tsx
-import { Link } from '@tanstack/react-router'
+import { Link } from "@tanstack/react-router";
 
-import { EditTodoPanel } from '../components/todo-mutation-panel'
-import type { Todo } from '../api/contracts'
-import { Button } from '#/shared/ui/button'
+import { EditTodoPanel } from "../components/todo-mutation-panel";
+import type { Todo } from "../api/contracts";
+import { Button } from "#/shared/ui/button";
 
 interface TodoDetailPageProps {
-  todo: Todo
-  onDeleted: () => void
+  todo: Todo;
+  onDeleted: () => void;
 }
 
 export function TodoDetailPage({ todo, onDeleted }: TodoDetailPageProps) {
@@ -1150,7 +1156,7 @@ export function TodoDetailPage({ todo, onDeleted }: TodoDetailPageProps) {
           search={{
             page: 1,
             pageSize: 10,
-            source: 'all',
+            source: "all",
             userId: null,
           }}
         >
@@ -1167,7 +1173,7 @@ export function TodoDetailPage({ todo, onDeleted }: TodoDetailPageProps) {
         <dl className="grid gap-3 rounded-xl border bg-card p-4 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">สถานะ</dt>
-            <dd className="font-medium">{todo.completed ? 'เสร็จแล้ว' : 'ยังไม่เสร็จ'}</dd>
+            <dd className="font-medium">{todo.completed ? "เสร็จแล้ว" : "ยังไม่เสร็จ"}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">ผู้ใช้งาน</dt>
@@ -1178,7 +1184,7 @@ export function TodoDetailPage({ todo, onDeleted }: TodoDetailPageProps) {
 
       <EditTodoPanel todo={todo} onDeleted={onDeleted} />
     </section>
-  )
+  );
 }
 ```
 
@@ -1187,16 +1193,16 @@ export function TodoDetailPage({ todo, onDeleted }: TodoDetailPageProps) {
 สร้าง `src/features/todos/index.ts`
 
 ```ts
-export { todoDetailQueryOptions, todosListQueryOptions } from './api/queries'
-export type { TodosListQueryInput } from './api/queries'
-export { TodoDetailPage } from './pages/todo-detail-page'
-export { TodosPage } from './pages/todos-page'
+export { todoDetailQueryOptions, todosListQueryOptions } from "./api/queries";
+export type { TodosListQueryInput } from "./api/queries";
+export { TodoDetailPage } from "./pages/todo-detail-page";
+export { TodosPage } from "./pages/todos-page";
 ```
 
 Route ต้อง Import ผ่าน `#/features/todos` เท่านั้น
 
 ```ts
-import { TodosPage, todosListQueryOptions } from '#/features/todos'
+import { TodosPage, todosListQueryOptions } from "#/features/todos";
 ```
 
 ไม่ควรเข้าถึง Internal File ของ Feature โดยตรง
@@ -1206,44 +1212,44 @@ import { TodosPage, todosListQueryOptions } from '#/features/todos'
 สร้าง `src/routes/todos/index.tsx`
 
 ```tsx
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 
-import { TodosPage, todosListQueryOptions } from '#/features/todos'
-import type { TodosListQueryInput } from '#/features/todos'
-import { Button } from '#/shared/ui/button'
+import { TodosPage, todosListQueryOptions } from "#/features/todos";
+import type { TodosListQueryInput } from "#/features/todos";
+import { Button } from "#/shared/ui/button";
 
 const todosSearchSchema = z
   .object({
     page: z.coerce.number().int().min(1).catch(1),
     pageSize: z.coerce.number().int().min(5).max(50).catch(10),
-    source: z.enum(['all', 'user']).catch('all'),
+    source: z.enum(["all", "user"]).catch("all"),
     userId: z.union([z.coerce.number().int().positive(), z.null()]).catch(null),
   })
   .transform((value): TodosListQueryInput => {
-    if (value.source === 'user') {
+    if (value.source === "user") {
       return {
         ...value,
         page: 1,
         userId: value.userId ?? 1,
-      }
+      };
     }
 
     return {
       ...value,
       userId: null,
-    }
-  })
+    };
+  });
 
 const defaultSearch: TodosListQueryInput = {
   page: 1,
   pageSize: 10,
-  source: 'all',
+  source: "all",
   userId: null,
-}
+};
 
-export const Route = createFileRoute('/todos/')({
+export const Route = createFileRoute("/todos/")({
   validateSearch: (search) => todosSearchSchema.parse(search),
   loaderDeps: ({ search }) => search,
   loader: ({ context, deps }) => context.queryClient.ensureQueryData(todosListQueryOptions(deps)),
@@ -1258,12 +1264,12 @@ export const Route = createFileRoute('/todos/')({
     </div>
   ),
   component: TodosRoute,
-})
+});
 
 function TodosRoute() {
-  const search = Route.useSearch()
-  const navigate = Route.useNavigate()
-  const { data } = useSuspenseQuery(todosListQueryOptions(search))
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const { data } = useSuspenseQuery(todosListQueryOptions(search));
 
   return (
     <TodosPage
@@ -1272,13 +1278,13 @@ function TodosRoute() {
       onSearchChange={(next) => {
         void navigate({
           search: (previous) => ({ ...previous, ...next }),
-        })
+        });
       }}
       onReset={() => {
-        void navigate({ search: defaultSearch })
+        void navigate({ search: defaultSearch });
       }}
     />
-  )
+  );
 }
 ```
 
@@ -1305,27 +1311,27 @@ page=1
 สร้าง `src/routes/todos/$todoId.tsx`
 
 ```tsx
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 
-import { TodoDetailPage, todoDetailQueryOptions } from '#/features/todos'
-import { Button } from '#/shared/ui/button'
+import { TodoDetailPage, todoDetailQueryOptions } from "#/features/todos";
+import { Button } from "#/shared/ui/button";
 
-const todoIdSchema = z.coerce.number().int().positive()
+const todoIdSchema = z.coerce.number().int().positive();
 
 const defaultTodosSearch = {
   page: 1,
   pageSize: 10,
-  source: 'all' as const,
+  source: "all" as const,
   userId: null,
-}
+};
 
-export const Route = createFileRoute('/todos/$todoId')({
+export const Route = createFileRoute("/todos/$todoId")({
   loader: ({ context, params }) => {
-    const todoId = todoIdSchema.parse(params.todoId)
+    const todoId = todoIdSchema.parse(params.todoId);
 
-    return context.queryClient.ensureQueryData(todoDetailQueryOptions(todoId))
+    return context.queryClient.ensureQueryData(todoDetailQueryOptions(todoId));
   },
   pendingComponent: () => <p className="py-12 text-muted-foreground">กำลังโหลด Todo…</p>,
   errorComponent: ({ error, reset }) => (
@@ -1338,25 +1344,25 @@ export const Route = createFileRoute('/todos/$todoId')({
     </div>
   ),
   component: TodoDetailRoute,
-})
+});
 
 function TodoDetailRoute() {
-  const navigate = Route.useNavigate()
-  const { todoId: rawTodoId } = Route.useParams()
-  const todoId = todoIdSchema.parse(rawTodoId)
-  const { data } = useSuspenseQuery(todoDetailQueryOptions(todoId))
+  const navigate = Route.useNavigate();
+  const { todoId: rawTodoId } = Route.useParams();
+  const todoId = todoIdSchema.parse(rawTodoId);
+  const { data } = useSuspenseQuery(todoDetailQueryOptions(todoId));
 
   return (
     <TodoDetailPage
       todo={data}
       onDeleted={() => {
         void navigate({
-          to: '/todos',
+          to: "/todos",
           search: defaultTodosSearch,
-        })
+        });
       }}
     />
-  )
+  );
 }
 ```
 
@@ -1374,7 +1380,7 @@ Route Loader และ Component ใช้ Query Options เดียวกั�
   search={{
     page: 1,
     pageSize: 10,
-    source: 'all',
+    source: "all",
     userId: null,
   }}
   className="text-muted-foreground transition-colors hover:text-foreground"
@@ -1390,40 +1396,40 @@ AppShell ทำหน้าที่ประกอบ Navigation เท่า�
 แก้ `src/test/msw/handlers.ts`
 
 ```ts
-import { HttpResponse, http } from 'msw'
+import { HttpResponse, http } from "msw";
 
 const todo = {
   id: 1,
-  todo: 'Define clear frontend architecture boundaries',
+  todo: "Define clear frontend architecture boundaries",
   completed: false,
   userId: 7,
-}
+};
 
 const completedTodo = {
   id: 2,
-  todo: 'Validate every external contract',
+  todo: "Validate every external contract",
   completed: true,
   userId: 7,
-}
+};
 
 const todosResponse = {
   todos: [todo, completedTodo],
   total: 2,
   skip: 0,
   limit: 10,
-}
+};
 
 export const handlers = [
-  http.get('*/users', () =>
+  http.get("*/users", () =>
     HttpResponse.json({
       users: [
         {
           id: 1,
-          firstName: 'Ada',
-          lastName: 'Lovelace',
-          email: 'ada@example.com',
-          image: 'https://example.com/ada.png',
-          role: 'admin',
+          firstName: "Ada",
+          lastName: "Lovelace",
+          email: "ada@example.com",
+          image: "https://example.com/ada.png",
+          role: "admin",
         },
       ],
       total: 1,
@@ -1432,16 +1438,16 @@ export const handlers = [
     }),
   ),
 
-  http.get('*/todos/random/:count', ({ params }) => {
-    const count = Number(params.count)
+  http.get("*/todos/random/:count", ({ params }) => {
+    const count = Number(params.count);
     return HttpResponse.json(
       Array.from({ length: count }, (_, index) => ({ ...todo, id: index + 1 })),
-    )
+    );
   }),
 
-  http.get('*/todos/random', () => HttpResponse.json(todo)),
+  http.get("*/todos/random", () => HttpResponse.json(todo)),
 
-  http.get('*/todos/user/:userId', ({ params }) =>
+  http.get("*/todos/user/:userId", ({ params }) =>
     HttpResponse.json({
       ...todosResponse,
       todos: todosResponse.todos.map((item) => ({
@@ -1451,41 +1457,41 @@ export const handlers = [
     }),
   ),
 
-  http.post('*/todos/add', async ({ request }) => {
-    const input = (await request.json()) as Record<string, unknown>
-    return HttpResponse.json({ ...input, id: 151 })
+  http.post("*/todos/add", async ({ request }) => {
+    const input = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({ ...input, id: 151 });
   }),
 
-  http.patch('*/todos/:todoId', async ({ params, request }) => {
-    const input = (await request.json()) as Record<string, unknown>
-    return HttpResponse.json({ ...todo, ...input, id: Number(params.todoId) })
+  http.patch("*/todos/:todoId", async ({ params, request }) => {
+    const input = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({ ...todo, ...input, id: Number(params.todoId) });
   }),
 
-  http.delete('*/todos/:todoId', ({ params }) =>
+  http.delete("*/todos/:todoId", ({ params }) =>
     HttpResponse.json({
       ...todo,
       id: Number(params.todoId),
       isDeleted: true,
-      deletedOn: '2026-08-02T12:00:00.000Z',
+      deletedOn: "2026-08-02T12:00:00.000Z",
     }),
   ),
 
-  http.get('*/todos/:todoId', ({ params }) =>
+  http.get("*/todos/:todoId", ({ params }) =>
     HttpResponse.json({ ...todo, id: Number(params.todoId) }),
   ),
 
-  http.get('*/todos', ({ request }) => {
-    const url = new URL(request.url)
-    const limit = Number(url.searchParams.get('limit') ?? 10)
-    const skip = Number(url.searchParams.get('skip') ?? 0)
+  http.get("*/todos", ({ request }) => {
+    const url = new URL(request.url);
+    const limit = Number(url.searchParams.get("limit") ?? 10);
+    const skip = Number(url.searchParams.get("skip") ?? 0);
 
     return HttpResponse.json({
       ...todosResponse,
       limit,
       skip,
-    })
+    });
   }),
-]
+];
 ```
 
 ลำดับ Handler สำคัญ
@@ -1515,67 +1521,67 @@ import {
   getTodos,
   getTodosByUser,
   updateTodo,
-} from './client'
+} from "./client";
 
-const expectedText = 'Define clear frontend architecture boundaries'
+const expectedText = "Define clear frontend architecture boundaries";
 
-describe('Todos API client', () => {
-  it('โหลด Todos พร้อม Limit และ Skip', async () => {
-    const result = await getTodos({ page: 2, pageSize: 10 })
+describe("Todos API client", () => {
+  it("โหลด Todos พร้อม Limit และ Skip", async () => {
+    const result = await getTodos({ page: 2, pageSize: 10 });
 
-    expect(result.skip).toBe(10)
-    expect(result.limit).toBe(10)
-    expect(result.todos[0]?.todo).toBe(expectedText)
-  })
+    expect(result.skip).toBe(10);
+    expect(result.limit).toBe(10);
+    expect(result.todos[0]?.todo).toBe(expectedText);
+  });
 
-  it('โหลด Todo รายการเดียว', async () => {
-    const result = await getTodo({ todoId: 1 })
-    expect(result.todo).toBe(expectedText)
-  })
+  it("โหลด Todo รายการเดียว", async () => {
+    const result = await getTodo({ todoId: 1 });
+    expect(result.todo).toBe(expectedText);
+  });
 
-  it('โหลด Todos ตาม User ID', async () => {
-    const result = await getTodosByUser({ userId: 5 })
-    expect(result.todos.every((todo) => todo.userId === 5)).toBe(true)
-  })
+  it("โหลด Todos ตาม User ID", async () => {
+    const result = await getTodosByUser({ userId: 5 });
+    expect(result.todos.every((todo) => todo.userId === 5)).toBe(true);
+  });
 
-  it('สุ่ม Todo หนึ่งรายการ', async () => {
-    const result = await getRandomTodo()
-    expect(result.id).toBe(1)
-  })
+  it("สุ่ม Todo หนึ่งรายการ", async () => {
+    const result = await getRandomTodo();
+    expect(result.id).toBe(1);
+  });
 
-  it('สุ่ม Todos หลายรายการ', async () => {
-    const result = await getRandomTodos({ count: 3 })
-    expect(result).toHaveLength(3)
-  })
+  it("สุ่ม Todos หลายรายการ", async () => {
+    const result = await getRandomTodos({ count: 3 });
+    expect(result).toHaveLength(3);
+  });
 
-  it('จำลองการเพิ่ม Todo', async () => {
+  it("จำลองการเพิ่ม Todo", async () => {
     const result = await addTodo({
       input: {
-        todo: 'Ship a tested Todos module',
+        todo: "Ship a tested Todos module",
         completed: false,
         userId: 7,
       },
-    })
+    });
 
-    expect(result.id).toBe(151)
-  })
+    expect(result.id).toBe(151);
+  });
 
-  it('จำลองการแก้ไข Todo', async () => {
+  it("จำลองการแก้ไข Todo", async () => {
     const result = await updateTodo({
       todoId: 1,
       input: { completed: true },
-    })
+    });
 
-    expect(result.completed).toBe(true)
-  })
+    expect(result.completed).toBe(true);
+  });
 
-  it('จำลองการลบ Todo', async () => {
-    const result = await deleteTodo({ todoId: 1 })
+  it("จำลองการลบ Todo", async () => {
+    const result = await deleteTodo({ todoId: 1 });
 
-    expect(result.isDeleted).toBe(true)
-    expect(result.deletedOn).toBe('2026-08-02T12:00:00.000Z')
-  })
-})
+    expect(result.isDeleted).toBe(true);
+    expect(result.deletedOn).toBe("2026-08-02T12:00:00.000Z");
+  });
+});
 ```
 
 Integration Test ชุดนี้ใช้
@@ -1594,27 +1600,27 @@ Feature Client จริง
 เพิ่ม Test เพื่อยืนยันว่า Contract Drift ถูกตรวจพบ
 
 ```ts
-import { HttpResponse, http } from 'msw'
+import { HttpResponse, http } from "msw";
 
-import { getTodo } from './client'
-import { server } from '#/test/msw/server'
+import { getTodo } from "./client";
+import { server } from "#/test/msw/server";
 
-test('แปลง Invalid API Response เป็น API_CONTRACT_ERROR', async () => {
+test("แปลง Invalid API Response เป็น API_CONTRACT_ERROR", async () => {
   server.use(
-    http.get('*/todos/999', () =>
+    http.get("*/todos/999", () =>
       HttpResponse.json({
         id: 999,
-        todo: '',
-        completed: 'not-a-boolean',
+        todo: "",
+        completed: "not-a-boolean",
         userId: null,
       }),
     ),
-  )
+  );
 
   await expect(getTodo({ todoId: 999 })).rejects.toMatchObject({
-    code: 'API_CONTRACT_ERROR',
-  })
-})
+    code: "API_CONTRACT_ERROR",
+  });
+});
 ```
 
 Test นี้พิสูจน์ว่า Type Safety ไม่ได้พึ่ง TypeScript เพียงอย่างเดียว
@@ -1624,55 +1630,55 @@ Test นี้พิสูจน์ว่า Type Safety ไม่ได้พ�
 สร้าง `src/features/todos/components/todos-table.test.tsx`
 
 ```tsx
-import { render, screen } from '@testing-library/react'
+import { render, screen } from "@testing-library/react";
 import {
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
-} from '@tanstack/react-router'
+} from "@tanstack/react-router";
 
-import { TodosTable } from './todos-table'
+import { TodosTable } from "./todos-table";
 
 function renderTable() {
-  const rootRoute = createRootRoute()
+  const rootRoute = createRootRoute();
   const todoRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: 'todos/$todoId',
+    path: "todos/$todoId",
     component: () => (
       <TodosTable
         todos={[
           {
             id: 1,
-            todo: 'Define clear frontend architecture boundaries',
+            todo: "Define clear frontend architecture boundaries",
             completed: false,
             userId: 7,
           },
         ]}
       />
     ),
-  })
+  });
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([todoRoute]),
-    history: createMemoryHistory({ initialEntries: ['/todos/1'] }),
-  })
+    history: createMemoryHistory({ initialEntries: ["/todos/1"] }),
+  });
 
-  return render(<RouterProvider router={router} />)
+  return render(<RouterProvider router={router} />);
 }
 
-describe('TodosTable', () => {
-  it('แสดง Todo, Status และ User', async () => {
-    renderTable()
+describe("TodosTable", () => {
+  it("แสดง Todo, Status และ User", async () => {
+    renderTable();
 
     expect(
-      await screen.findByText('Define clear frontend architecture boundaries'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('ยังไม่เสร็จ')).toBeInTheDocument()
-    expect(screen.getByText('User #7')).toBeInTheDocument()
-  })
-})
+      await screen.findByText("Define clear frontend architecture boundaries"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ยังไม่เสร็จ")).toBeInTheDocument();
+    expect(screen.getByText("User #7")).toBeInTheDocument();
+  });
+});
 ```
 
 หาก Test Router สร้างภาระเกินไป ให้แยก Row Presentation ที่ไม่มี `Link` ออกมา Test ต่างหาก และให้ E2E รับผิดชอบ Navigation
@@ -1724,20 +1730,20 @@ http://localhost:3000/todos
 เพิ่มกรณีใน `e2e/smoke.spec.ts`
 
 ```ts
-import { expect, test } from '@playwright/test'
+import { expect, test } from "@playwright/test";
 
 const todo = {
   id: 1,
-  todo: 'Define clear frontend architecture boundaries',
+  todo: "Define clear frontend architecture boundaries",
   completed: false,
   userId: 7,
-}
+};
 
-test('เปิด Todos, เปลี่ยนหน้า และเข้าหน้ารายละเอียด', async ({ page }) => {
-  await page.route('**/todos?*', async (route) => {
-    const url = new URL(route.request().url())
-    const skip = Number(url.searchParams.get('skip') ?? 0)
-    const limit = Number(url.searchParams.get('limit') ?? 10)
+test("เปิด Todos, เปลี่ยนหน้า และเข้าหน้ารายละเอียด", async ({ page }) => {
+  await page.route("**/todos?*", async (route) => {
+    const url = new URL(route.request().url());
+    const skip = Number(url.searchParams.get("skip") ?? 0);
+    const limit = Number(url.searchParams.get("limit") ?? 10);
 
     await route.fulfill({
       json: {
@@ -1746,25 +1752,25 @@ test('เปิด Todos, เปลี่ยนหน้า และเข้�
         skip,
         limit,
       },
-    })
-  })
+    });
+  });
 
-  await page.route('**/todos/1', async (route) => {
-    await route.fulfill({ json: todo })
-  })
+  await page.route("**/todos/1", async (route) => {
+    await route.fulfill({ json: todo });
+  });
 
-  await page.goto('/todos?page=1&pageSize=10&source=all')
+  await page.goto("/todos?page=1&pageSize=10&source=all");
 
-  await expect(page.getByRole('heading', { name: 'Todos' })).toBeVisible()
-  await expect(page.getByText(todo.todo)).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Todos" })).toBeVisible();
+  await expect(page.getByText(todo.todo)).toBeVisible();
 
-  await page.getByRole('button', { name: 'ถัดไป' }).click()
-  await expect(page).toHaveURL(/page=2/)
+  await page.getByRole("button", { name: "ถัดไป" }).click();
+  await expect(page).toHaveURL(/page=2/);
 
-  await page.getByRole('link', { name: todo.todo }).click()
-  await expect(page).toHaveURL('/todos/1')
-  await expect(page.getByRole('heading', { name: todo.todo })).toBeVisible()
-})
+  await page.getByRole("link", { name: todo.todo }).click();
+  await expect(page).toHaveURL("/todos/1");
+  await expect(page.getByRole("heading", { name: todo.todo })).toBeVisible();
+});
 ```
 
 E2E ตรวจเฉพาะ Critical Journey ส่วน Contract และ Edge Cases อยู่ใน Vitest/MSW
