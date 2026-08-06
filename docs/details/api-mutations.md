@@ -721,6 +721,531 @@ flowchart TD
 
 Cache Policy นี้ถูกออกแบบตามข้อจำกัดของ Backend จำลอง ไม่ใช่กฎสากลว่าทุกระบบควรหลีกเลี่ยง Invalidation
 
+<details>
+    <summary>ตำแหน่งที่ควรทำ invalidateQueries</summary>
+    
+ถ้าเป็น Server จริงที่ Persist ข้อมูล Mutation แล้ว ตำแหน่งที่ควรทำ `invalidateQueries` คือใน Mutation Cache Policy ภายในไฟล์:
+
+```text
+src/features/todos/api/mutations.ts
+```
+
+กล่าวคือ ใส่ใน `onSuccess` หรือ `onSettled` ของ `addTodoMutationOptions`, `updateTodoMutationOptions` และ `deleteTodoMutationOptions` ไม่ควรใส่ใน Component, Route หรือ `client.ts`
+
+เหตุผลคือสถาปัตยกรรมของ Boilerplate กำหนดให้:
+
+```text
+routes
+  → ประกอบ URL และหน้าจอ
+
+features/todos/api/client.ts
+  → ติดต่อ HTTP API และตรวจ Response
+
+features/todos/api/queries.ts
+  → กำหนด Query Identity และ Fetch Policy
+
+features/todos/api/mutations.ts
+  → กำหนด Mutation และผลกระทบต่อ Query Cache
+```
+
+เอกสารสถาปัตยกรรมระบุว่า TanStack Query เป็นเจ้าของ Server State และ Feature ถูกจัดเป็น Vertical Slice ซึ่งมี `queries.ts`, `mutations.ts`, `client.ts` และ `contracts.ts` อยู่ภายใน Feature เดียวกัน ดังนั้น Cache Synchronization หลัง Mutation จึงเป็นความรับผิดชอบของ `mutations.ts` โดยตรง fileciteturn2file0L2-L2
+
+## กรณี Add Todo บน Server จริง
+
+รูปแบบพื้นฐานที่สุดคือ:
+
+```ts
+export function addTodoMutationOptions(
+  queryClient: QueryClient,
+) {
+  return mutationOptions({
+    mutationKey: todosMutationKeys.add(),
+
+    mutationFn: (input: CreateTodoInput) =>
+      addTodo({ input }),
+
+    onSuccess: (createdTodo) => {
+      queryClient.setQueryData(
+        todosKeys.detail(createdTodo.id),
+        createdTodo,
+      );
+
+      return queryClient.invalidateQueries({
+        queryKey: todosKeys.lists(),
+      });
+    },
+  });
+}
+```
+
+ลำดับการทำงานคือ:
+
+```mermaid
+flowchart TD
+    UI[Submit Add Todo]
+    MUTATION[addTodoMutationOptions]
+    API[POST /todos]
+    DB[(Database)]
+    SUCCESS[Server คืน Todo ที่สร้างแล้ว]
+    DETAIL[เขียน Detail Cache]
+    INVALIDATE[Invalidate Todos Lists]
+    REFETCH[Refetch Active Lists]
+    SERVER[อ่านข้อมูลล่าสุดจาก Server]
+    CACHE[Cache ตรงกับ Server]
+
+    UI --> MUTATION
+    MUTATION --> API
+    API --> DB
+    DB --> SUCCESS
+    SUCCESS --> DETAIL
+    DETAIL --> INVALIDATE
+    INVALIDATE --> REFETCH
+    REFETCH --> SERVER
+    SERVER --> CACHE
+```
+
+เมื่อ Backend Persist จริง การ Refetch หลัง Add จะไม่ทำให้ Todo หาย เพราะ Todo ใหม่นั้นอยู่ใน Database แล้ว
+
+## ทำไมเขียน Detail Cache แล้วจึงยัง Invalidate Lists
+
+สองอย่างนี้มีหน้าที่ต่างกัน:
+
+```ts
+queryClient.setQueryData(
+  todosKeys.detail(createdTodo.id),
+  createdTodo,
+);
+```
+
+ใช้ Seed Detail Cache ทันที ดังนั้นเมื่อเปิดหน้า Todo Detail ระบบอาจไม่ต้อง Fetch ใหม่ทันที
+
+ส่วน:
+
+```ts
+queryClient.invalidateQueries({
+  queryKey: todosKeys.lists(),
+});
+```
+
+ใช้ประกาศว่า List ทุกชุดที่อาจได้รับผลกระทบไม่ใช่ข้อมูลล่าสุดแล้ว เช่น:
+
+```text
+/todos?page=1
+/todos?page=2
+/todos?source=user&userId=5
+/todos?completed=true
+/todos?sort=createdAt.desc
+```
+
+Frontend ไม่ควรเดาเสมอไปว่า Server จัดลำดับ, Filter, Pagination หรือคำนวณ `total` อย่างไร การ Refetch จาก Server จึงเป็นทางเลือกที่ปลอดภัยกว่า
+
+## ควรใช้ `onSuccess` หรือ `onSettled`
+
+สำหรับ Server จริง ผมแนะนำให้เริ่มจาก `onSuccess`
+
+```ts
+onSuccess: async (createdTodo) => {
+  queryClient.setQueryData(
+    todosKeys.detail(createdTodo.id),
+    createdTodo,
+  );
+
+  await queryClient.invalidateQueries({
+    queryKey: todosKeys.lists(),
+  });
+},
+```
+
+เพราะควร Invalidate เมื่อ Server ยืนยันว่าคำสั่งสำเร็จแล้วเท่านั้น
+
+`onSettled` จะทำงานทั้งกรณีสำเร็จและล้มเหลว:
+
+```ts
+onSettled: () => {
+  return queryClient.invalidateQueries({
+    queryKey: todosKeys.lists(),
+  });
+},
+```
+
+เหมาะกว่าเมื่อใช้ Optimistic Update และต้องการ Refetch หลังจบ Mutation เพื่อยืนยัน Cache กับ Server ไม่ว่าผลจะสำเร็จหรือ Error
+
+```text
+Normal mutation
+→ ใช้ onSuccess เป็นค่าเริ่มต้น
+
+Optimistic mutation
+→ มักใช้ onMutate + onError + onSettled
+```
+
+## Update Todo ควร Invalidate อะไร
+
+ปัจจุบันโค้ดใช้ Manual Cache Update:
+
+```ts
+queryClient.setQueryData(
+  todosKeys.detail(todoId),
+  updatedTodo,
+);
+
+queryClient.setQueriesData<TodosListResponse>(
+  { queryKey: todosKeys.lists() },
+  // replace todo
+);
+```
+
+บน Server จริง มีสามแนวทาง
+
+### แนวทางที่ 1: Invalidate ทั้ง Detail และ Lists
+
+เป็นค่าเริ่มต้นที่เข้าใจง่ายและ Correctness สูง:
+
+```ts
+export function updateTodoMutationOptions(
+  queryClient: QueryClient,
+  todoId: number,
+) {
+  return mutationOptions({
+    mutationKey: todosMutationKeys.update(todoId),
+
+    mutationFn: (input: UpdateTodoInput) =>
+      updateTodo({ todoId, input }),
+
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: todosKeys.detail(todoId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: todosKeys.lists(),
+        }),
+      ]);
+    },
+  });
+}
+```
+
+เหมาะเมื่อ Server อาจ:
+
+- แก้ข้อมูลเพิ่มเติม เช่น `updatedAt`
+- Normalize ค่า
+- คำนวณ Field ใหม่
+- เปลี่ยนสถานะที่มีผลต่อ Filter
+- เปลี่ยนลำดับใน List
+- มี Business Rule ที่ Client ไม่ควรจำลอง
+
+### แนวทางที่ 2: เขียน Detail จาก Response แล้ว Invalidate Lists
+
+นี่เป็นแนวทางที่สมดุลและเหมาะกับ Boilerplate นี้มากที่สุด:
+
+```ts
+onSuccess: async (updatedTodo) => {
+  queryClient.setQueryData(
+    todosKeys.detail(todoId),
+    updatedTodo,
+  );
+
+  await queryClient.invalidateQueries({
+    queryKey: todosKeys.lists(),
+  });
+},
+```
+
+ผลคือ:
+
+- Detail Update ทันที
+- Lists ถูกตรวจสอบใหม่จาก Server
+- ไม่ต้องเขียน Logic แก้ Pagination และ Filter เอง
+
+### แนวทางที่ 3: Manual Update ทั้งหมด
+
+```ts
+onSuccess: (updatedTodo) => {
+  queryClient.setQueryData(
+    todosKeys.detail(todoId),
+    updatedTodo,
+  );
+
+  queryClient.setQueriesData<TodosListResponse>(
+    { queryKey: todosKeys.lists() },
+    (current) => {
+      // replace item
+    },
+  );
+}
+```
+
+ใช้ได้เมื่อ:
+
+- Response เป็น Resource เวอร์ชันสมบูรณ์จาก Server
+- List ไม่มี Sort หรือ Filter ซับซ้อน
+- การ Update ไม่ทำให้ Entity ย้ายออกจาก List
+- ทีมมั่นใจว่า Client สามารถคำนวณ Cache State ได้ถูกต้อง
+
+แต่ตัวอย่างเช่น Todo เดิมมี:
+
+```ts
+{
+  completed: false
+}
+```
+
+และผู้ใช้อยู่บน List:
+
+```text
+/todos?completed=false
+```
+
+เมื่อ Update เป็น:
+
+```ts
+{
+  completed: true
+}
+```
+
+การ Replace Item อย่างเดียวผิด เพราะ Todo ควรถูกนำออกจาก List เดิม และอาจต้องเข้า List `completed=true`
+
+ตรงนี้คือเหตุผลที่ Server จริงมักใช้:
+
+```ts
+setQueryData(detail)
++ invalidateQueries(lists)
+```
+
+## Delete Todo ควรทำอย่างไร
+
+รูปแบบที่ปลอดภัย:
+
+```ts
+export function deleteTodoMutationOptions(
+  queryClient: QueryClient,
+  todoId: number,
+) {
+  return mutationOptions({
+    mutationKey: todosMutationKeys.delete(todoId),
+
+    mutationFn: () =>
+      deleteTodo({ todoId }),
+
+    onSuccess: async () => {
+      queryClient.removeQueries({
+        queryKey: todosKeys.detail(todoId),
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: todosKeys.lists(),
+      });
+    },
+  });
+}
+```
+
+`removeQueries` ใช้ลบ Detail Cache ที่ไม่มี Resource แล้ว ส่วน Invalidation ทำให้ List กลับไปอ่าน Server State ใหม่ เช่น Server อาจเติมรายการจากหน้าถัดไปขึ้นมาเพื่อรักษา Page Size
+
+ตัวอย่าง:
+
+```text
+ก่อนลบ หน้า 1:
+[A, B, C, D, E]
+
+ลบ C ด้วย Manual Filter:
+[A, B, D, E]
+```
+
+แต่ถ้า `limit = 5` ผลจาก Server ที่ถูกต้องอาจเป็น:
+
+```text
+[A, B, D, E, F]
+```
+
+เพราะ `F` ถูกเลื่อนจากหน้าถัดไปขึ้นมา Manual `filter()` ไม่สามารถรู้ข้อมูลนั้นได้ จึงควร Invalidate List
+
+## Policy ที่แนะนำสำหรับ Boilerplate นี้
+
+สำหรับ REST API และ Server จริง ผมแนะนำ Policy ดังนี้:
+
+```ts
+export function addTodoMutationOptions(
+  queryClient: QueryClient,
+) {
+  return mutationOptions({
+    mutationKey: todosMutationKeys.add(),
+
+    mutationFn: (input: CreateTodoInput) =>
+      addTodo({ input }),
+
+    onSuccess: async (createdTodo) => {
+      queryClient.setQueryData(
+        todosKeys.detail(createdTodo.id),
+        createdTodo,
+      );
+
+      await queryClient.invalidateQueries({
+        queryKey: todosKeys.lists(),
+      });
+    },
+  });
+}
+
+export function updateTodoMutationOptions(
+  queryClient: QueryClient,
+  todoId: number,
+) {
+  return mutationOptions({
+    mutationKey: todosMutationKeys.update(todoId),
+
+    mutationFn: (input: UpdateTodoInput) =>
+      updateTodo({ todoId, input }),
+
+    onSuccess: async (updatedTodo) => {
+      queryClient.setQueryData(
+        todosKeys.detail(todoId),
+        updatedTodo,
+      );
+
+      await queryClient.invalidateQueries({
+        queryKey: todosKeys.lists(),
+      });
+    },
+  });
+}
+
+export function deleteTodoMutationOptions(
+  queryClient: QueryClient,
+  todoId: number,
+) {
+  return mutationOptions({
+    mutationKey: todosMutationKeys.delete(todoId),
+
+    mutationFn: () =>
+      deleteTodo({ todoId }),
+
+    onSuccess: async () => {
+      queryClient.removeQueries({
+        queryKey: todosKeys.detail(todoId),
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: todosKeys.lists(),
+      });
+    },
+  });
+}
+```
+
+## ทำไมไม่ควร Invalidate ใน Component
+
+ไม่แนะนำรูปแบบนี้:
+
+```tsx
+const mutation = useMutation({
+  ...addTodoMutationOptions(queryClient),
+
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: todosKeys.lists(),
+    });
+  },
+});
+```
+
+เพราะ Cache Policy จะกระจายไปตาม Consumer:
+
+```text
+Add Todo Dialog
+Add Todo Page
+Quick Add Widget
+Bulk Import Component
+```
+
+แต่ละจุดอาจ Invalidate ไม่เหมือนกัน ส่งผลให้ Mutation เดียวกันมีพฤติกรรมต่างกันตามหน้าที่เรียกใช้
+
+ในสถาปัตยกรรมนี้ควรเป็น:
+
+```text
+Component
+  → สั่ง Mutation
+
+Mutation Options
+  → เป็นเจ้าของ Cache Synchronization
+```
+
+Component ควรเป็นเจ้าของเฉพาะผลกระทบของ UI เช่น:
+
+```ts
+onSuccess: () => {
+  closeDialog();
+  showToast();
+  navigate(...);
+}
+```
+
+ส่วน Cache Consistency ควรอยู่ใน `features/todos/api/mutations.ts`
+
+เอกสาร Mutation ของ repository เองก็อธิบายว่าไฟล์นี้มีหน้าที่กำหนด Mutation Function และ Cache Policy หลัง Mutation สำเร็จ รวมถึงใช้ `QueryClient` เพื่อแก้ Query Cache โดยตรง fileciteturn4file0L2-L2
+
+## ข้อควรระวังเกี่ยวกับ `invalidateQueries`
+
+คำสั่งนี้:
+
+```ts
+queryClient.invalidateQueries({
+  queryKey: todosKeys.lists(),
+});
+```
+
+ไม่ได้หมายความว่า Query Cache ทุกตัวจะ Fetch ทันทีเสมอไป
+
+โดยทั่วไป Query ที่ตรงกับ Key จะถูก Mark เป็น Stale และ Query ที่ Active อยู่จะถูก Refetch ส่วน Query ที่ไม่ได้ถูกใช้งานยังคงอยู่ใน Cache ในสถานะ Stale และจะ Fetch เมื่อถูกใช้อีกครั้งตาม Policy
+
+ดังนั้นการ Invalidate Root List Key ไม่ได้จำเป็นต้องส่ง Request ให้ทุกหน้า Pagination พร้อมกัน
+
+## ข้อสรุป
+
+สำหรับ Server จริงใน Boilerplate นี้ ให้ทำ Invalidation ที่:
+
+```text
+src/features/todos/api/mutations.ts
+```
+
+ภายใน Cache Lifecycle ของแต่ละ Mutation โดยใช้แนวทางหลัก:
+
+```text
+Add
+→ set detail cache
+→ invalidate lists
+
+Update
+→ set detail cache จาก server response
+→ invalidate lists
+
+Delete
+→ remove detail cache
+→ invalidate lists
+```
+
+นี่รักษา Boundary ของสถาปัตยกรรมได้ตรงที่สุด:
+
+```mermaid
+flowchart LR
+    UI[Feature UI]
+    MUTATION[mutations.ts]
+    CLIENT[client.ts]
+    SERVER[Real Server]
+    CACHE[TanStack Query Cache]
+
+    UI -->|mutate| MUTATION
+    MUTATION --> CLIENT
+    CLIENT --> SERVER
+    SERVER -->|authoritative result| MUTATION
+    MUTATION -->|set/remove/invalidate| CACHE
+    CACHE --> UI
+```
+
+Manual Cache Update ไม่ใช่สิ่งที่ต้องเลิกใช้เมื่อมี Server จริง แต่ควรใช้เฉพาะจุดที่ Client สามารถคำนวณผลลัพธ์ได้อย่างแน่นอน ส่วน List ที่มี Pagination, Filter, Sort, Aggregate หรือ Server-side Business Rule ควรให้ Server เป็นผู้ตอบคำถามผ่าน Invalidation และ Refetch.
+</details>
+
 ---
 
 # 11. `updateTodoMutationOptions`
