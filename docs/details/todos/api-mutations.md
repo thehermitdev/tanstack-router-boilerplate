@@ -2,8 +2,6 @@
 
 ไฟล์เป้าหมายจาก Tutorial: `src/features/todos/api/mutations.ts`
 
-> หมายเหตุ: ไฟล์ `src/features/todos/api/mutations.ts` เป็นไฟล์ที่ Tutorial ให้ผู้อ่านสร้างขึ้น เนื้อหาในเอกสารนี้จึงอธิบายจาก Implementation ในหัวข้อ 7 ของ `docs/GETTING_STARTED.th.md`
-
 ## ภาพรวม
 
 ไฟล์ `mutations.ts` เป็นเจ้าของ Command Operations ของ Feature Todos ได้แก่ สุ่มข้อมูล เพิ่ม แก้ไข และลบ Todo รวมถึงกำหนดว่าเมื่อ Server ตอบกลับสำเร็จแล้ว Query Cache ต้องเปลี่ยนอย่างไร
@@ -18,7 +16,7 @@ Mutation ไม่ได้จบที่การเรียก API สำเ
 หาก Mutation เปลี่ยนข้อมูลบน Server แต่ไม่อัปเดต Cache ที่เกี่ยวข้อง UI จะอยู่ในสถานะไม่สอดคล้องกัน
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[User Action] --> B[Mutation Options]
     B --> C[Mutation Function]
     C --> D[Todos API Client]
@@ -128,31 +126,19 @@ function shouldInsertIntoActiveList(input: TodosListQueryInput, todo: Todo) {
 
 ฟังก์ชันนี้ตัดสินว่า Todo ที่เพิ่งสร้างควรถูกเพิ่มเข้า Active List Cache ที่ผู้ใช้กำลังดูหรือไม่
 
-### Input
+Input:
 
 - `input: TodosListQueryInput` — เงื่อนไขของ List ปัจจุบัน เช่น Source, Page, Page Size และ User ID
 - `todo: Todo` — Todo ที่ Server คืนหลัง Add สำเร็จ
 
-### Output
+Output:
 
 - `true` — Todo ใหม่สมควรปรากฏใน Active List
 - `false` — ไม่ควรแก้ Active List Cache
 
-### Logic Breakdown
-
-กรณี `source === "user"`:
-
-```text
-Todo ใหม่อยู่ใน List นี้
-เมื่อ activeList.userId === createdTodo.userId
-```
-
-กรณี `source === "all"`:
-
-```text
-Todo ใหม่ถูกสมมติว่าอยู่บนหน้าแรก
-จึง Insert เฉพาะเมื่อ page === 1
-```
+Logic Breakdown:
+- กรณี `source === "user"`: ให้ Todo ใหม่อยู่ใน List นี้เมื่อ `activeList.userId === createdTodo.userId`
+- กรณี `source === "all"`: ให้ Todo ใหม่ถูกสมมติว่าอยู่บนหน้าแรก จึง Insert เฉพาะเมื่อ `page === 1`
 
 ```mermaid
 flowchart TD
@@ -201,18 +187,15 @@ function prependTodo(current: TodosListResponse, todo: Todo): TodosListResponse 
 
 ฟังก์ชันนี้สร้าง List Response ชุดใหม่โดยเพิ่ม Todo ไว้ด้านหน้า พร้อมรักษาขนาดหน้าตาม `limit`
 
-### Input
-
+Input:
 - `current: TodosListResponse` — Cache Value ปัจจุบัน
 - `todo: Todo` — Todo ใหม่ที่ต้องเพิ่ม
 
-### Output
-
+Output:
 - `TodosListResponse` ชุดใหม่
 - หรือคืน Object เดิมเมื่อพบ Todo ID ซ้ำ
 
-### Logic Breakdown
-
+Logic Breakdown: 
 1. ตรวจ Duplicate ด้วย `id`
 2. หากมีอยู่แล้ว คืน `current` เพื่อไม่เพิ่มซ้ำ
 3. สร้าง Array ใหม่ `[todo, ...current.todos]`
@@ -233,15 +216,12 @@ flowchart TD
     H --> I[คืน Response ใหม่]
 ```
 
-เหตุผลที่ต้องสร้าง Object และ Array ใหม่:
+> **เหตุผลที่ต้องสร้าง Object และ Array ใหม่:** TanStack Query ตรวจการเปลี่ยนแปลงและทำ Structural Sharing จาก Reference หากแก้ Array เดิมด้วย `unshift()` หรือแก้ Object เดิมโดยตรง อาจทำให้ State Tracking และ React Rendering ไม่แน่นอน
 
-TanStack Query ตรวจการเปลี่ยนแปลงและทำ Structural Sharing จาก Reference หากแก้ Array เดิมด้วย `unshift()` หรือแก้ Object เดิมโดยตรง อาจทำให้ State Tracking และ React Rendering ไม่แน่นอน
-
-เหตุผลที่ตรวจ Duplicate:
-
-- ป้องกัน `onSuccess` ถูกประมวลผลซ้ำ
-- ป้องกัน API คืน Entity ที่มีอยู่แล้ว
-- ป้องกัน UI Trigger Add ซ้ำในบาง Workflow
+> เหตุผลที่ตรวจ Duplicate:
+> - ป้องกัน `onSuccess` ถูกประมวลผลซ้ำ
+> - ป้องกัน API คืน Entity ที่มีอยู่แล้ว
+> - ป้องกัน UI Trigger Add ซ้ำในบาง Workflow
 
 Edge Cases:
 
@@ -275,15 +255,9 @@ export function randomTodosMutationOptions() {
 
 ดังนั้นจึงใช้ Mutation แทน Query
 
-### Input
-
-- `count: number` — จำนวน Todo ที่ต้องการสุ่ม ตั้งแต่ 1–10
-
-### Output
-
-- Mutation Options ที่เมื่อ Execute จะคืน `Promise<Array<Todo>>`
-
-### Logic Breakdown
+Input: `count: number` — จำนวน Todo ที่ต้องการสุ่ม ตั้งแต่ 1–10
+Output: Mutation Options ที่เมื่อ Execute จะคืน `Promise<Array<Todo>>`
+Logic Breakdown: 
 
 1. สร้าง Mutation Key `random`
 2. รับ `count` จาก Caller
@@ -339,21 +313,14 @@ export function addTodoMutationOptions(
 
 Factory นี้สร้าง Mutation สำหรับเพิ่ม Todo และกำหนด Cache Policy หลัง Add สำเร็จ
 
-### Factory Input
+Factory Input:
 
 - `queryClient: QueryClient` — API สำหรับอ่านและแก้ Query Cache
 - `activeListInput: TodosListQueryInput` — เงื่อนไขของ List ที่ผู้ใช้กำลังดู
 
-### Mutation Input
-
-- `CreateTodoInput` — `{ todo, completed, userId }`
-
-### Mutation Output
-
-- `Todo` ที่ผ่าน Response Contract แล้ว
-
-### Logic Breakdown
-
+Mutation Input: `CreateTodoInput` — `{ todo, completed, userId }`
+Mutation Output: `Todo` ที่ผ่าน Response Contract แล้ว
+Logic Breakdown:
 1. Caller ส่ง `CreateTodoInput`
 2. `mutationFn` เรียก `addTodo`
 3. API Client Validate Request Input
@@ -377,13 +344,8 @@ flowchart TD
     I --> J[เขียน List Cache ใหม่]
 ```
 
-### ทำไมเขียน Detail Cache ทันที
-
-หลัง Add สำเร็จ Server คืน Entity ฉบับสมบูรณ์แล้ว จึงสามารถ Seed Detail Cache ได้ทันที หากผู้ใช้ Navigate ไปหน้ารายละเอียด TanStack Query สามารถใช้ข้อมูลนี้ก่อนตาม `staleTime`
-
-### ทำไมอัปเดตเฉพาะ Active List
-
-Tutorial เลือก Policy แบบจำกัดขอบเขตเพื่อหลีกเลี่ยงการคาดเดาตำแหน่งของ Todo ใหม่ในทุก List Cache โดย Update เฉพาะ List ที่ผู้ใช้มองเห็นและมีเงื่อนไขรองรับอย่างชัดเจน
+> ทำไมเขียน Detail Cache ทันที: หลัง Add สำเร็จ Server คืน Entity ฉบับสมบูรณ์แล้ว จึงสามารถ Seed Detail Cache ได้ทันที หากผู้ใช้ Navigate ไปหน้ารายละเอียด TanStack Query สามารถใช้ข้อมูลนี้ก่อนตาม `staleTime`
+> ทำไมอัปเดตเฉพาะ Active List: Tutorial เลือก Policy แบบจำกัดขอบเขตเพื่อหลีกเลี่ยงการคาดเดาตำแหน่งของ Todo ใหม่ในทุก List Cache โดย Update เฉพาะ List ที่ผู้ใช้มองเห็นและมีเงื่อนไขรองรับอย่างชัดเจน
 
 Edge Cases:
 
@@ -434,21 +396,13 @@ export function updateTodoMutationOptions(queryClient: QueryClient, todoId: numb
 
 Factory นี้สร้าง Mutation สำหรับแก้ไข Todo และ Synchronize ทุก Cached List ที่มี Todo รายการนั้น
 
-### Factory Input
-
+Factory Input: 
 - `queryClient: QueryClient`
 - `todoId: number` — Entity ID เป้าหมาย
 
-### Mutation Input
-
-- `UpdateTodoInput` — Partial Payload ที่ต้องมีอย่างน้อยหนึ่ง Field
-
-### Mutation Output
-
-- `Todo` ฉบับล่าสุดจาก Server
-
-### Logic Breakdown
-
+Mutation Input: `UpdateTodoInput` — Partial Payload ที่ต้องมีอย่างน้อยหนึ่ง Field
+Mutation Output: `Todo` ฉบับล่าสุดจาก Server
+Logic Breakdown: 
 1. `mutationFn` ปิด `todoId` ไว้ใน Closure
 2. Caller ส่งเฉพาะ Field ที่ต้องแก้
 3. API Client Validate Input และใช้ `PATCH`
@@ -471,15 +425,11 @@ flowchart TD
     H --> I[เขียน List Cache ใหม่]
 ```
 
-### ทำไมใช้ `setQueriesData`
-
-Todo เดียวกันอาจปรากฏในหลาย List Cache เช่น All List และ User List การอัปเดตเฉพาะ Active List จะทำให้กลับไปอีกหน้าแล้วเห็นข้อมูลเก่า `setQueriesData` จึงใช้ Partial Query Key `todosKeys.lists()` เพื่อ Synchronize ทุก List Cache ที่มีอยู่
-
-### ทำไมตรวจ `containsTodo` ก่อน `map`
-
-- หลีกเลี่ยงสร้าง Array/Object ใหม่โดยไม่จำเป็น
-- รักษา Reference เดิมให้ Structural Sharing ทำงานดี
-- ลด React Re-render ของ Consumer ที่ข้อมูลไม่เปลี่ยน
+> ทำไมใช้ `setQueriesData`: Todo เดียวกันอาจปรากฏในหลาย List Cache เช่น All List และ User List การอัปเดตเฉพาะ Active List จะทำให้กลับไปอีกหน้าแล้วเห็นข้อมูลเก่า `setQueriesData` จึงใช้ Partial Query Key `todosKeys.lists()` เพื่อ Synchronize ทุก List Cache ที่มีอยู่
+> ทำไมตรวจ `containsTodo` ก่อน `map`: 
+> - หลีกเลี่ยงสร้าง Array/Object ใหม่โดยไม่จำเป็น
+> - รักษา Reference เดิมให้ Structural Sharing ทำงานดี
+> - ลด React Re-render ของ Consumer ที่ข้อมูลไม่เปลี่ยน
 
 Edge Cases สำคัญ:
 
@@ -532,21 +482,13 @@ export function deleteTodoMutationOptions(queryClient: QueryClient, todoId: numb
 
 Factory นี้สร้าง Mutation สำหรับลบ Todo และนำ Entity ออกจากทุก Cache Entry ที่เกี่ยวข้อง
 
-### Factory Input
-
+Factory Input: 
 - `queryClient: QueryClient`
 - `todoId: number`
 
-### Mutation Input
-
-- ไม่มี Runtime Variable เพราะ `todoId` ถูกปิดไว้ใน Closure
-
-### Mutation Output
-
-- API Client คืน `DeletedTodo` แต่ `onSuccess` ไม่ต้องใช้ Payload เพราะรู้ Entity ID ที่ต้องลบอยู่แล้ว
-
-### Logic Breakdown
-
+Mutation Input: ไม่มี Runtime Variable เพราะ `todoId` ถูกปิดไว้ใน Closure
+Mutation Output: API Client คืน `DeletedTodo` แต่ `onSuccess` ไม่ต้องใช้ Payload เพราะรู้ Entity ID ที่ต้องลบอยู่แล้ว
+Logic Breakdown: 
 1. `mutationFn` เรียก `deleteTodo({ todoId })`
 2. เมื่อ Server ยืนยันสำเร็จ ลบ Detail Query ออกจาก Cache
 3. ค้นทุก Todos List Cache
@@ -566,13 +508,11 @@ flowchart TD
     H --> I[ลด total โดยไม่ต่ำกว่า 0]
 ```
 
-### `removeQueries` ต่างจาก `setQueryData(undefined)` อย่างไร
+> `removeQueries` ต่างจาก `setQueryData(undefined)` อย่างไร?
+> `removeQueries` นำ Query Entry ออกจาก Query Cache โดยตรง รวม State และ Metadata ที่เกี่ยวข้อง เหมาะกับ Resource ที่ยืนยันแล้วว่าไม่มีอยู่ต่อไป
 
-`removeQueries` นำ Query Entry ออกจาก Query Cache โดยตรง รวม State และ Metadata ที่เกี่ยวข้อง เหมาะกับ Resource ที่ยืนยันแล้วว่าไม่มีอยู่ต่อไป
-
-### ทำไมใช้ `Math.max(0, total - 1)`
-
-เป็น Defensive Guard ป้องกัน Aggregate ติดลบหาก Cache เดิมไม่สอดคล้องหรือ Delete Flow ถูกเรียกซ้ำ
+> ทำไมใช้ `Math.max(0, total - 1)`?
+> เป็น Defensive Guard ป้องกัน Aggregate ติดลบหาก Cache เดิมไม่สอดคล้องหรือ Delete Flow ถูกเรียกซ้ำ
 
 Edge Cases:
 
@@ -663,7 +603,7 @@ onSuccess
 6. `onSettled` Revalidate ตามความจำเป็น
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[onMutate] --> B[Cancel Queries]
     B --> C[Snapshot]
     C --> D[Optimistic Cache]
@@ -847,12 +787,7 @@ Implementation ปัจจุบันมี Complexity โดยประม�
 10. Production Mutation ต้องวางแผนเรื่อง Retry, Idempotency, Concurrency, Rollback และ Authorization
 
 แก่นของหัวข้อนี้คือ:
-
-```text
-Mutation Success
-  ≠ งานเสร็จ
-
-Mutation Success
-  → Reconcile Cache ที่ได้รับผลกระทบ
-  → รักษา UI ให้สอดคล้องกับ Server State
-```
+- Mutation Success ≠ งานเสร็จ
+- Mutation Success:
+  - Reconcile Cache ที่ได้รับผลกระทบ
+  - รักษา UI ให้สอดคล้องกับ Server State
