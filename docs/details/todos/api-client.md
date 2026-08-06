@@ -4,12 +4,10 @@
 
 > หมายเหตุ: ไฟล์ `src/features/todos/api/client.ts` ยังไม่ได้อยู่ใน Source Tree ของ Repository ปัจจุบัน เพราะ Tutorial ออกแบบให้ผู้อ่านสร้างไฟล์นี้ขึ้นมาเอง เนื้อหาในเอกสารนี้จึงอธิบายจาก Implementation ในหัวข้อ 5 ของ `docs/GETTING_STARTED.th.md`
 
-ภาพรวม:
-
 API Client คือ Boundary ที่เชื่อมระหว่าง Feature Todos กับ HTTP API ภายนอก หน้าที่ของมันไม่ใช่เพียงเรียก Axios แต่ต้องควบคุมวงจรของข้อมูลให้ครบตั้งแต่รับ Input, สร้าง HTTP Request, รองรับการยกเลิก Request, ตรวจ Runtime Contract ของ Response และคืน Domain Data ที่เชื่อถือได้ให้ Query หรือ Mutation Layer
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[Query หรือ Mutation Layer] --> B[Todos API Client]
     B --> C[Validate Request Input]
     C --> D[Shared Axios Client]
@@ -38,8 +36,6 @@ API Client อยู่ระหว่างสอง Boundary สำคัญ
 ---
 
 ## Interfaces
-
-แก่นสำคัญ:
 
 Interfaces ในไฟล์นี้ทำหน้าที่นิยาม Function Contract ของแต่ละ API Operation ว่า Caller ต้องส่งข้อมูลอะไรเข้ามา โดยแยกตาม Use Case เช่น อ่านรายการ, อ่านรายละเอียด, สุ่ม, เพิ่ม, แก้ไข และลบ
 
@@ -370,8 +366,6 @@ Edge Cases:
 
 ## Methods
 
-แก่นสำคัญ:
-
 Methods ใน API Client มี Pattern เดียวกัน
 
 ```text
@@ -460,21 +454,8 @@ function withSignal(signal: AbortSignal | undefined) {
 
 เป็น Helper สำหรับสร้าง Axios Config Fragment เฉพาะเมื่อมี Signal
 
-Input:
-
-- `signal: AbortSignal | undefined`
-
-Output:
-
-```ts
-{}
-```
-
-หรือ
-
-```ts
-{ signal: AbortSignal }
-```
+- Input: `signal: AbortSignal | undefined`
+- Output: `{}` หรือ `{ signal: AbortSignal }`
 
 เหตุผลที่ใช้ Helper:
 
@@ -502,9 +483,7 @@ export async function getTodos({
 }: GetTodosInput): Promise<TodosListResponse>
 ```
 
-หน้าที่:
-
-อ่านรายการ Todo แบบ Server Pagination
+หน้าที่: อ่านรายการ Todo แบบ Server Pagination
 
 Input:
 
@@ -512,9 +491,7 @@ Input:
 - `pageSize`
 - `signal`
 
-Output:
-
-- `Promise<TodosListResponse>`
+Output: `Promise<TodosListResponse>`
 
 Logic Breakdown:
 
@@ -527,7 +504,7 @@ Logic Breakdown:
 7. คืนข้อมูลที่ Validate และ Normalize แล้ว
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[page + pageSize] --> B[limit = pageSize]
     A --> C[skip = page - 1 × pageSize]
     B --> D[GET /todos]
@@ -571,18 +548,14 @@ Edge Cases:
 export async function getTodo({ todoId, signal }: GetTodoInput): Promise<Todo>
 ```
 
-หน้าที่:
-
-อ่าน Todo หนึ่งรายการจาก `GET /todos/:id`
+หน้าที่: อ่าน Todo หนึ่งรายการจาก `GET /todos/:id`
 
 Input:
 
 - `todoId`
 - `signal`
 
-Output:
-
-- `Promise<Todo>`
+Output: `Promise<Todo>`
 
 Logic Breakdown:
 
@@ -592,9 +565,7 @@ Logic Breakdown:
 4. Parse Response ด้วย `todoSchema`
 5. คืน Todo ที่ Validate แล้ว
 
-Security Note:
-
-การใช้ Template Literal กับ Numeric ID ที่ผ่าน Validation มีความเสี่ยงต่ำ แต่ API Client ไม่ควรประกอบ Path จาก String ที่ไม่ได้ Validate โดยเฉพาะ Endpoint ที่รับ Arbitrary Path Segment
+> Security Note: การใช้ Template Literal กับ Numeric ID ที่ผ่าน Validation มีความเสี่ยงต่ำ แต่ API Client ไม่ควรประกอบ Path จาก String ที่ไม่ได้ Validate โดยเฉพาะ Endpoint ที่รับ Arbitrary Path Segment
 
 Edge Cases:
 
@@ -651,9 +622,7 @@ Edge Cases:
 export async function getRandomTodo({ signal }: RequestInput = {}): Promise<Todo>
 ```
 
-หน้าที่:
-
-อ่าน Todo แบบสุ่มหนึ่งรายการจาก `GET /todos/random`
+หน้าที่: อ่าน Todo แบบสุ่มหนึ่งรายการจาก `GET /todos/random`
 
 Input:
 
@@ -661,9 +630,7 @@ Input:
 - `signal` เป็น Optional
 - หากไม่ส่ง Argument จะใช้ `{}` เป็น Default
 
-Output:
-
-- `Promise<Todo>`
+Output: `Promise<Todo>`
 
 ข้อดีของ Default Parameter:
 
@@ -679,9 +646,7 @@ await getRandomTodo({ signal });
 
 สามารถใช้ Function เดียวกันได้โดยไม่ต้องส่ง Object ว่างทุกครั้ง
 
-Caching Consideration:
-
-Random Endpoint มี Semantics ต่างจาก Resource Query ทั่วไป เพราะ Caller มักคาดหวังผลใหม่ทุกครั้ง หากนำไปใช้กับ TanStack Query ต้องกำหนด `staleTime`, `refetch` หรือใช้ Mutation-style trigger ให้ตรงกับ UX ไม่เช่นนั้น Cache อาจทำให้กดสุ่มแล้วได้ค่าครั้งเดิม
+> Caching Consideration: Random Endpoint มี Semantics ต่างจาก Resource Query ทั่วไป เพราะ Caller มักคาดหวังผลใหม่ทุกครั้ง หากนำไปใช้กับ TanStack Query ต้องกำหนด `staleTime`, `refetch` หรือใช้ Mutation-style trigger ให้ตรงกับ UX ไม่เช่นนั้น Cache อาจทำให้กดสุ่มแล้วได้ค่าครั้งเดิม
 
 Edge Cases:
 
@@ -701,18 +666,14 @@ export async function getRandomTodos({
 }: GetRandomTodosInput): Promise<Array<Todo>>
 ```
 
-หน้าที่:
-
-อ่าน Todo แบบสุ่มหลายรายการ โดย Normalize Output ให้เป็น `Array<Todo>` เสมอ แม้ขอเพียงหนึ่งรายการ
+หน้าที่: อ่าน Todo แบบสุ่มหลายรายการ โดย Normalize Output ให้เป็น `Array<Todo>` เสมอ แม้ขอเพียงหนึ่งรายการ
 
 Input:
 
 - `count`
 - `signal`
 
-Output:
-
-- `Promise<Array<Todo>>`
+Output: `Promise<Array<Todo>>`
 
 Logic Breakdown:
 
@@ -751,11 +712,10 @@ Array<Todo>
 
 ช่วยลด Branching ใน UI และ Mutation Consumer
 
-Performance Analysis:
-
-- `count === 1` ใช้ Endpoint เฉพาะแทน Endpoint หลายรายการ
-- จำกัดสูงสุด 10 รายการเพื่อลด Payload และ Render Cost
-- Validation Cost ต่ำตามขนาด Array ที่จำกัด
+> Performance Analysis:
+> - `count === 1` ใช้ Endpoint เฉพาะแทน Endpoint หลายรายการ
+> - จำกัดสูงสุด 10 รายการเพื่อลด Payload และ Render Cost
+> - Validation Cost ต่ำตามขนาด Array ที่จำกัด
 
 Edge Cases:
 
@@ -772,18 +732,14 @@ Edge Cases:
 export async function addTodo({ input, signal }: AddTodoRequest): Promise<Todo>
 ```
 
-หน้าที่:
-
-สร้าง Todo ใหม่ผ่าน `POST /todos/add`
+หน้าที่: สร้าง Todo ใหม่ผ่าน `POST /todos/add`
 
 Input:
 
 - `input: CreateTodoInput`
 - `signal`
 
-Output:
-
-- `Promise<Todo>`
+Output: `Promise<Todo>`
 
 Logic Breakdown:
 
@@ -795,7 +751,7 @@ Logic Breakdown:
 6. คืน Todo ที่ Server ตอบกลับ
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[CreateTodoInput] --> B[createTodoInputSchema.parse]
     B -->|ผ่าน| C[POST /todos/add]
     B -->|ไม่ผ่าน| D[ZodError]
@@ -804,16 +760,13 @@ flowchart LR
     F --> G[Todo]
 ```
 
-Security Analysis:
+> Security Analysis:
+> - Client-side Validation ช่วย UX แต่ไม่ใช่ Security Boundary สุดท้าย
+> - Server ต้อง Validate Input ซ้ำเสมอ
+> - `userId` จาก Browser ไม่ควรถูกเชื่อถือเพื่อระบุ Ownership ในระบบจริง
+> - Authorization ควรอ้างอิง Identity จาก Session หรือ Access Token ที่ Server ตรวจแล้ว
 
-- Client-side Validation ช่วย UX แต่ไม่ใช่ Security Boundary สุดท้าย
-- Server ต้อง Validate Input ซ้ำเสมอ
-- `userId` จาก Browser ไม่ควรถูกเชื่อถือเพื่อระบุ Ownership ในระบบจริง
-- Authorization ควรอ้างอิง Identity จาก Session หรือ Access Token ที่ Server ตรวจแล้ว
-
-DummyJSON Limitation:
-
-Endpoint นี้จำลองการสร้างและคืน Object ใหม่ แต่ไม่ได้ Persist ลง Dataset เมื่อ Refresh หรือ Fetch ใหม่ข้อมูลจะหายไป ดังนั้น Cache Update ใน Tutorial ต้องถูกมองเป็น Demo Consistency Model ไม่ใช่พฤติกรรมของ Database จริง
+> DummyJSON Limitation: Endpoint นี้จำลองการสร้างและคืน Object ใหม่ แต่ไม่ได้ Persist ลง Dataset เมื่อ Refresh หรือ Fetch ใหม่ข้อมูลจะหายไป ดังนั้น Cache Update ใน Tutorial ต้องถูกมองเป็น Demo Consistency Model ไม่ใช่พฤติกรรมของ Database จริง
 
 Edge Cases:
 
@@ -836,9 +789,7 @@ export async function updateTodo({
 }: UpdateTodoRequest): Promise<Todo>
 ```
 
-หน้าที่:
-
-แก้บาง Field ของ Todo ผ่าน `PATCH /todos/:id`
+หน้าที่: แก้บาง Field ของ Todo ผ่าน `PATCH /todos/:id`
 
 Input:
 
@@ -846,9 +797,7 @@ Input:
 - `input: UpdateTodoInput`
 - `signal`
 
-Output:
-
-- `Promise<Todo>`
+Output: `Promise<Todo>`
 
 Logic Breakdown:
 
@@ -859,9 +808,7 @@ Logic Breakdown:
 5. Parse Response เป็น Todo เต็มรูป
 6. คืน Entity ใหม่สำหรับอัปเดต Query Cache
 
-เหตุผลที่ใช้ `PATCH`:
-
-Form ส่งเฉพาะ Field ที่เปลี่ยน ไม่ได้ Replace Resource ทั้งก้อน หาก API ใช้ `PUT` ตาม Semantics ของ Full Replacement Caller ต้องส่ง Field ที่จำเป็นทั้งหมดและ Contract ต้องเปลี่ยนตาม
+> เหตุผลที่ใช้ `PATCH`: Form ส่งเฉพาะ Field ที่เปลี่ยน ไม่ได้ Replace Resource ทั้งก้อน หาก API ใช้ `PUT` ตาม Semantics ของ Full Replacement Caller ต้องส่ง Field ที่จำเป็นทั้งหมดและ Contract ต้องเปลี่ยนตาม
 
 Concurrency Risk:
 
@@ -900,18 +847,14 @@ export async function deleteTodo({
 }: DeleteTodoRequest): Promise<DeletedTodo>
 ```
 
-หน้าที่:
-
-ลบ Todo ผ่าน `DELETE /todos/:id`
+หน้าที่: ลบ Todo ผ่าน `DELETE /todos/:id`
 
 Input:
 
 - `todoId`
 - `signal`
 
-Output:
-
-- `Promise<DeletedTodo>`
+Output: `Promise<DeletedTodo>`
 
 Logic Breakdown:
 
