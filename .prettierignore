@@ -6,3 +6,4 @@ dist
 coverage
 test-results
 src/routeTree.gen.ts
+docs/
