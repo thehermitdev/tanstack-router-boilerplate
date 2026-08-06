@@ -14,7 +14,7 @@
 Query Key ไม่ใช่เพียงชื่อสำหรับ Cache แต่เป็น Identity ของ Server State หากสอง Request คืนข้อมูลคนละชุด ต้องใช้คนละ Key และหากสอง Request หมายถึง Resource เดียวกัน ต้องไม่สร้าง Key แยกโดยไม่มีเหตุผล
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[Route หรือ Component] --> B[Query Options Factory]
     B --> C[Query Key Factory]
     B --> D[Query Function]
@@ -189,11 +189,7 @@ function normalizeTodosListInput(input: TodosListQueryInput) {
 
 หน้าที่ของฟังก์ชันคือแปลง Input ให้เหลือเฉพาะ Field ที่มีผลต่อ Identity ของ HTTP Resource ก่อนนำไปสร้าง Query Key
 
-Input:
-
-```ts
-TodosListQueryInput
-```
+Input: `TodosListQueryInput`
 
 Output เมื่อ `source === "user"`:
 
@@ -224,16 +220,14 @@ Logic Breakdown:
 
 ```mermaid
 flowchart TD
-    A[TodosListQueryInput] --> B{source === user?}
-    B -->|Yes| C[{ source, userId }]
-    B -->|No| D[{ source, page, pageSize }]
-    C --> E[Query Key]
+    A[TodosListQueryInput] --> B{"source === user?"}
+    B -->|Yes| C["{ source, userId }"]
+    B -->|No| D["{ source, page, pageSize }"]
+    C --> E["Query Key"]
     D --> E
 ```
 
-เหตุผลที่ต้อง Normalize:
-
-สมมติ User Scope ไม่ใช้ Pagination แต่ Input จาก URL เปลี่ยน `page`
+เหตุผลที่ต้อง Normalize: สมมติ User Scope ไม่ใช้ Pagination แต่ Input จาก URL เปลี่ยน `page`
 
 ```ts
 {
@@ -292,11 +286,7 @@ Edge Cases:
 - หาก Query Function ใช้ Field ใหม่ เช่น `sort` หรือ `status` แต่ Normalize ไม่ใส่ Field นั้น จะเกิด Cache Collision
 - หากใส่ Field ที่ Query Function ไม่ใช้ จะเกิด Cache Fragmentation
 
-กฎสำคัญคือ:
-
-```text
-Query Key ต้องมีทุก Input ที่เปลี่ยนผลลัพธ์ของ queryFn
-และไม่ควรมี Input ที่ไม่เปลี่ยนผลลัพธ์ของ queryFn
+> กฎสำคัญคือ: Query Key ต้องมีทุก Input ที่เปลี่ยนผลลัพธ์ของ `queryFn` และไม่ควรมี Input ที่ไม่เปลี่ยนผลลัพธ์ของ `queryFn`
 ```
 
 ---
@@ -415,7 +405,7 @@ detail: (todoId) => [...todosKeys.details(), todoId] as const
 Query Key Hierarchy ช่วยให้ Cache Operation เลือกระดับได้
 
 ```mermaid
-flowchart TD
+flowchart LR
     A[todosKeys.all] --> B[Invalidate ทุก Todos Query]
     C[todosKeys.lists] --> D[Invalidate เฉพาะ Lists]
     E[todosKeys.list input] --> F[Invalidate List ชุดเดียว]
@@ -579,7 +569,7 @@ Edge Cases:
 
 - `userId === null` ทำให้ Query เข้าสู่ Error State
 - Input ไม่ Valid แต่ถูกใช้สร้าง Cache Key ก่อน Query Function Throw
-- Source เปลี่ยนเร็วและ API Clientไม่รองรับ Signal จะเกิด Request แข่งกัน
+- Source เปลี่ยนเร็วและ API Client ไม่รองรับ Signal จะเกิด Request แข่งกัน
 - `page` หรือ `pageSize` ผิด ทำให้ Fetch Resource ผิด
 - User Scope API ในอนาคตรองรับ Pagination แต่ Query Function ยังไม่ส่งค่า
 - ใช้ Options Factory คนละชุดใน Loader กับ Component ทำให้ Prefetch ไม่ตรง Cache
@@ -609,13 +599,8 @@ export function todoDetailQueryOptions(todoId: number) {
 
 เป็น Query Options Factory สำหรับอ่าน Todo หนึ่งรายการ
 
-Input:
-
-- `todoId: number` — ID ของ Todo ที่ต้องการอ่าน
-
-Output:
-
-Query Options ที่เมื่อ Execute แล้วคืน `Promise<Todo>` ผ่าน `getTodo`
+- Input: `todoId: number` — ID ของ Todo ที่ต้องการอ่าน
+- Output: Query Options ที่เมื่อ Execute แล้วคืน `Promise<Todo>` ผ่าน `getTodo`
 
 Logic Breakdown:
 
@@ -627,7 +612,7 @@ Logic Breakdown:
 6. ถือข้อมูลว่า Fresh 60 วินาที
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[todoId] --> B[todosKeys.detail]
     B --> C[Detail Cache Lookup]
     C -->|Fetch required| D[getTodo]
@@ -883,9 +868,6 @@ Log และ Trace ควรระบุข้อมูลที่ช่วย
 10. Runtime Validation, Error Taxonomy, Retry และ Cache Consistency ต้องได้รับการออกแบบเพิ่มเมื่อเชื่อม Production API จริง
 
 แนวคิดที่ต้องจำคือ:
-
-```text
-Query Key = Identity ของ Server State
-Query Function = วิธีสร้าง Server State ชุดนั้น
-Query Options = Contract ที่ผูกทั้งสองอย่างเข้าด้วยกัน
-```
+- Query Key = Identity ของ Server State
+- Query Function = วิธีสร้าง Server State ชุดนั้น
+- Query Options = Contract ที่ผูกทั้งสองอย่างเข้าด้วยกัน
