@@ -188,7 +188,7 @@ export type UpdateTodoInput = z.infer<typeof updateTodoInputSchema>;
 - Mutation Input แยกจาก Response Contract
 - `limit` ใช้ `nonnegative()` เพราะ DummyJSON รองรับ `limit=0`
 
-อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Contract](./details/api-contract.md)
+อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Contract](./details/todos/api-contract.md)
 
 ## 5. สร้าง API Client ให้ครบทุก Endpoint
 
@@ -369,7 +369,7 @@ export async function deleteTodo({ todoId, signal }: DeleteTodoRequest): Promise
 - Client คืน Domain Data ไม่คืน `AxiosResponse`
 - `PATCH` ส่งเฉพาะ Field ที่ Form แก้ไข
 
-อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Client](./details/api-client.md)
+อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Client](./details/todos/api-client.md)
 
 
 ## 6. สร้าง Query Key และ Query Options
@@ -465,7 +465,7 @@ export function todoDetailQueryOptions(todoId: number) {
 
 Query Key จึงสะท้อน HTTP Resource จริง
 
-อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Queries](./details/api-queries.md)
+อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Queries](./details/todos/api-queries.md)
 
 ## 7. สร้าง Mutation และ Cache Policy
 
@@ -617,7 +617,7 @@ export function deleteTodoMutationOptions(queryClient: QueryClient, todoId: numb
 
 การ Update Cache นี้มีผลเฉพาะ Browser Session เพราะ DummyJSON ไม่ Persist Mutation
 
-อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Mutations](./details/api-mutations.md)
+อ่านรายละเอียดเพิ่มเติมได้ที่ [การสร้าง API Mutations](./details/todos/api-mutations.md)
 
 ## 8. สร้าง Todos Toolbar
 
