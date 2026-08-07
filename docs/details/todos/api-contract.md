@@ -2,8 +2,6 @@
 
 ไฟล์: `src/features/todos/api/contracts.ts`
 
-ภาพรวม:
-
 API Contract คือข้อตกลงเรื่อง “รูปร่างของข้อมูล” ที่อนุญาตให้ผ่านเข้าและออกจากโมดูล Todos โดยไฟล์นี้ใช้ Zod เป็น Runtime Schema เพื่อทำหน้าที่สองอย่างพร้อมกัน
 
 1. ตรวจสอบข้อมูลจริงตอน Runtime ก่อนนำไปใช้ในระบบ
@@ -45,8 +43,6 @@ HTTP Response
 
 ## Schema
 
-แก่นสำคัญ:
-
 Schema เป็น Executable Contract กล่าวคือไม่ได้เป็นเพียงคำอธิบาย Type แต่เป็นโค้ดที่รับค่า `unknown` แล้วตรวจสอบว่าโครงสร้างและค่าภายในตรงตามกฎหรือไม่
 
 การเรียก `schema.parse(value)` มีพฤติกรรมดังนี้
@@ -76,94 +72,64 @@ export const todoSchema = z.object({
 });
 ```
 
-#### Overview
-
 `todoSchema` เป็น Entity Contract กลางของ Feature ใช้อธิบาย Todo หนึ่งรายการที่ผ่านการตรวจสอบแล้ว
 
 ทุก Response ที่มี Todo ไม่ว่าจะเป็น Detail, List, Random, Create หรือ Update จะอ้างอิง Schema นี้แทนการประกาศรูปร่างซ้ำ
 
-#### Input
-
-รับค่า `unknown` ที่คาดว่าจะมีโครงสร้างดังนี้
-
-```ts
-{
-  id: number | numeric string;
-  todo: string;
-  completed: boolean;
-  userId: number | numeric string;
-}
-```
-
-#### Output
-
-เมื่อ Parse สำเร็จ จะคืนข้อมูลรูปแบบนี้
-
-```ts
-{
-  id: number;
-  todo: string;
-  completed: boolean;
-  userId: number;
-}
-```
-
-แม้ `id` หรือ `userId` จาก API จะเป็น Numeric String เช่น `"12"` ค่า Output จะถูก Normalize เป็น `12`
+- Input: รับค่า `unknown` ที่คาดว่าจะมีโครงสร้างดังนี้
+    ```ts
+    {
+      id: number | numeric string;
+      todo: string;
+      completed: boolean;
+      userId: number | numeric string;
+    }
+    ```
+- Output: เมื่อ Parse สำเร็จ จะคืนข้อมูลรูปแบบนี้
+    ```ts
+    {
+      id: number;
+      todo: string;
+      completed: boolean;
+      userId: number;
+    }
+    ```
+    แม้ `id` หรือ `userId` จาก API จะเป็น Numeric String เช่น `"12"` ค่า Output จะถูก Normalize เป็น `12`
 
 #### Logic Breakdown
 
-`id`
-
-```ts
-z.coerce.number().int().positive()
-```
-
-ทำงานตามลำดับดังนี้
-
-1. `coerce.number()` พยายามแปลงค่าเป็น `number`
-2. `int()` บังคับว่าต้องเป็นจำนวนเต็ม
-3. `positive()` บังคับว่าต้องมากกว่า `0`
-
-ตัวอย่าง
-
-```text
-"10"  → 10      ผ่าน
-10     → 10      ผ่าน
-10.5   →         ไม่ผ่าน เพราะไม่ใช่จำนวนเต็ม
-0      →         ไม่ผ่าน เพราะไม่เป็นจำนวนบวก
--1     →         ไม่ผ่าน เพราะไม่เป็นจำนวนบวก
-"abc" → NaN     ไม่ผ่าน
-```
-
-`todo`
-
-```ts
-z.string().trim().min(1)
-```
-
-ทำงานตามลำดับดังนี้
-
-1. ต้องเป็น String
-2. ตัดช่องว่างหัวและท้ายด้วย `trim()`
-3. หลัง Trim แล้วต้องเหลืออย่างน้อยหนึ่งตัวอักษร
-
-```text
-" Buy milk " → "Buy milk"   ผ่านและถูก Normalize
-"   "         → ""           ไม่ผ่าน
-null          →              ไม่ผ่าน
-```
-
-`completed`
-
-```ts
-z.boolean()
-```
-
-รับเฉพาะ Boolean จริงเท่านั้น ค่าอย่าง `"true"`, `1` หรือ `0` จะไม่ถูกแปลงให้อัตโนมัติ
-
-`userId`
-
-ใช้กฎเดียวกับ `id` เพื่อรับทั้ง Number และ Numeric String จาก API แล้ว Normalize เป็นจำนวนเต็มบวก
+- `id`: `z.coerce.number().int().positive()`
+    ทำงานตามลำดับดังนี้
+    
+    1. `coerce.number()` พยายามแปลงค่าเป็น `number`
+    2. `int()` บังคับว่าต้องเป็นจำนวนเต็ม
+    3. `positive()` บังคับว่าต้องมากกว่า `0`
+    
+    ตัวอย่าง
+    
+    ```text
+    "10"  → 10      ผ่าน
+    10     → 10      ผ่าน
+    10.5   →         ไม่ผ่าน เพราะไม่ใช่จำนวนเต็ม
+    0      →         ไม่ผ่าน เพราะไม่เป็นจำนวนบวก
+    -1     →         ไม่ผ่าน เพราะไม่เป็นจำนวนบวก
+    "abc" → NaN     ไม่ผ่าน
+    ```
+- `todo`: `z.string().trim().min(1)`
+    ทำงานตามลำดับดังนี้
+    
+    1. ต้องเป็น String
+    2. ตัดช่องว่างหัวและท้ายด้วย `trim()`
+    3. หลัง Trim แล้วต้องเหลืออย่างน้อยหนึ่งตัวอักษร
+    
+    ```text
+    " Buy milk " → "Buy milk"   ผ่านและถูก Normalize
+    "   "         → ""           ไม่ผ่าน
+    null          →              ไม่ผ่าน
+    ```
+- `completed`: `z.boolean()`
+    รับเฉพาะ Boolean จริงเท่านั้น ค่าอย่าง `"true"`, `1` หรือ `0` จะไม่ถูกแปลงให้อัตโนมัติ
+- `userId`: ใช้กฎเดียวกับ `id` เพื่อรับทั้ง Number และ Numeric String จาก API แล้ว Normalize เป็นจำนวนเต็มบวก
 
 #### เหตุผลเชิงสถาปัตยกรรม
 
@@ -190,8 +156,6 @@ export const todosListResponseSchema = z.object({
 });
 ```
 
-#### Overview
-
 Schema นี้อธิบาย Response ของ Endpoint รายการ Todo ทั้งแบบทั้งหมดและแบบกรองตาม User
 
 ```ts
@@ -201,56 +165,39 @@ GET /todos/user/:userId
 
 Response ประกอบด้วยข้อมูลรายการและ Metadata สำหรับ Pagination
 
-#### Input
-
-```ts
-{
-  todos: unknown[];
-  total: number | numeric string;
-  skip: number | numeric string;
-  limit: number | numeric string;
-}
-```
-
-#### Output
-
-```ts
-{
-  todos: Todo[];
-  total: number;
-  skip: number;
-  limit: number;
-}
-```
+- input: 
+    ```ts
+    {
+      todos: unknown[];
+      total: number | numeric string;
+      skip: number | numeric string;
+      limit: number | numeric string;
+    }
+    ```
+- Output: 
+    ```ts
+    {
+      todos: Todo[];
+      total: number;
+      skip: number;
+      limit: number;
+    }
+    ```
 
 Todo ทุกตัวใน Array จะถูก Parse ด้วย `todoSchema` และ Numeric Metadata ทุกตัวจะถูก Normalize เป็น Number
 
 #### Logic Breakdown
 
-`todos`
-
-```ts
-z.array(todoSchema)
-```
-
-ตรวจสองระดับ
-
-1. ค่าหลักต้องเป็น Array
-2. สมาชิกทุกตัวต้องผ่าน `todoSchema`
-
-หากมี Todo เพียงหนึ่งตัวผิด Contract การ Parse Response ทั้งก้อนจะล้มเหลว นี่เป็นแนวทางแบบ Fail Fast เพื่อไม่ปล่อย Partial Invalid Data เข้าสู่ Query Cache
-
-`total`
-
-จำนวนข้อมูลทั้งหมดของ Dataset หรือ Scope ปัจจุบัน ต้องเป็นจำนวนเต็มตั้งแต่ `0` ขึ้นไป
-
-`skip`
-
-จำนวนรายการที่ API ข้ามก่อนเริ่มคืนผลลัพธ์ ต้องเป็นจำนวนเต็มตั้งแต่ `0` ขึ้นไป
-
-`limit`
-
-จำนวนรายการสูงสุดที่ Endpoint ขอหรือคืนกลับ ต้องเป็นจำนวนเต็มตั้งแต่ `0` ขึ้นไป
+- `todos`: `z.array(todoSchema)`
+    ตรวจสองระดับ
+    
+    1. ค่าหลักต้องเป็น Array
+    2. สมาชิกทุกตัวต้องผ่าน `todoSchema`
+    
+    หากมี Todo เพียงหนึ่งตัวผิด Contract การ Parse Response ทั้งก้อนจะล้มเหลว นี่เป็นแนวทางแบบ Fail Fast เพื่อไม่ปล่อย Partial Invalid Data เข้าสู่ Query Cache
+- `total`: จำนวนข้อมูลทั้งหมดของ Dataset หรือ Scope ปัจจุบัน ต้องเป็นจำนวนเต็มตั้งแต่ `0` ขึ้นไป
+- `skip`: จำนวนรายการที่ API ข้ามก่อนเริ่มคืนผลลัพธ์ ต้องเป็นจำนวนเต็มตั้งแต่ `0` ขึ้นไป
+- `limit`: จำนวนรายการสูงสุดที่ Endpoint ขอหรือคืนกลับ ต้องเป็นจำนวนเต็มตั้งแต่ `0` ขึ้นไป
 
 ใช้ `nonnegative()` แทน `positive()` เพราะ DummyJSON รองรับ `limit=0`
 
@@ -288,8 +235,6 @@ flowchart TD
 export const randomTodosSchema = z.array(todoSchema).min(1).max(10);
 ```
 
-#### Overview
-
 Schema นี้ตรวจ Response ของ Endpoint ที่คืน Todo แบบสุ่มหลายรายการ
 
 ```text
@@ -298,17 +243,8 @@ GET /todos/random/:count
 
 Tutorial กำหนดขอบเขตไว้ที่ 1–10 รายการให้ตรงกับความสามารถของ UI และ API
 
-#### Input
-
-ค่า `unknown` ที่คาดว่าจะเป็น Array ของ Todo
-
-#### Output
-
-```ts
-Todo[]
-```
-
-โดย Array ต้องมีจำนวนสมาชิกตั้งแต่ 1 ถึง 10 และสมาชิกทุกตัวต้องผ่าน `todoSchema`
+- Input: ค่า `unknown` ที่คาดว่าจะเป็น Array ของ Todo
+- Output: `Todo[]` โดย Array ต้องมีจำนวนสมาชิกตั้งแต่ 1 ถึง 10 และสมาชิกทุกตัวต้องผ่าน `todoSchema`
 
 #### Logic Breakdown
 
@@ -340,8 +276,6 @@ export const createTodoInputSchema = z.object({
   userId: z.number().int().positive(),
 });
 ```
-
-#### Overview
 
 Schema นี้เป็น Command/Input Contract สำหรับการสร้าง Todo ใหม่ ไม่ใช่ API Response Contract
 
@@ -439,8 +373,6 @@ export const updateTodoInputSchema = createTodoInputSchema
   });
 ```
 
-#### Overview
-
 Schema นี้เป็น Input Contract สำหรับ `PATCH /todos/:id` ซึ่งส่งเฉพาะ Field ที่ต้องการเปลี่ยน
 
 Tutorial อนุญาตให้ Update ได้สอง Field
@@ -504,33 +436,27 @@ flowchart LR
 
 ป้องกัน Empty Patch เช่น `{}` เพราะแม้ทุก Field เป็น Optional แต่ Request ที่ไม่แก้อะไรไม่มีความหมายเชิง Business
 
-#### Input ที่ผ่าน
-
-```ts
-{ todo: "Updated todo" }
-{ completed: true }
-{ todo: "Updated todo", completed: true }
-```
-
-#### Input ที่ไม่ผ่าน
-
-```ts
-{}
-{ todo: " " }
-{ completed: "true" }
-{ userId: 10 }
-```
-
-กรณี `{ userId: 10 }` จะถูก Strip จนเหลือ Object ว่างในพฤติกรรมปกติของ Zod Object จากนั้น Refine จะไม่ผ่าน จึงไม่สามารถใช้ Unknown Field หลบกฎ Empty Patch ได้
-
-#### Output
-
-```ts
-{
-  todo?: string;
-  completed?: boolean;
-}
-```
+- Input ที่ผ่าน
+    ```ts
+    { todo: "Updated todo" }
+    { completed: true }
+    { todo: "Updated todo", completed: true }
+    ```
+- Input ที่ไม่ผ่าน
+    ```ts
+    {}
+    { todo: " " }
+    { completed: "true" }
+    { userId: 10 }
+    ```
+    กรณี `{ userId: 10 }` จะถูก Strip จนเหลือ Object ว่างในพฤติกรรมปกติของ Zod Object จากนั้น Refine จะไม่ผ่าน จึงไม่สามารถใช้ Unknown Field หลบกฎ Empty Patch ได้
+- Output
+    ```ts
+    {
+      todo?: string;
+      completed?: boolean;
+    }
+    ```
 
 มีอย่างน้อยหนึ่ง Field เสมอในระดับ Runtime แม้ Type ที่ Infer ออกมายังคงแสดง Field ทั้งสองเป็น Optional เพราะ TypeScript ไม่สามารถสะท้อนเงื่อนไขจาก `.refine()` เป็น Union ที่บังคับ Non-empty Object ได้โดยตรง
 
@@ -567,65 +493,40 @@ export const deletedTodoSchema = todoSchema.extend({
 });
 ```
 
-#### Overview
-
 Schema นี้อธิบาย Response หลังลบ Todo สำเร็จ โดยต่อยอดจาก Entity เดิมและเพิ่ม Metadata ของการลบ
 
-#### Input
-
-```ts
-{
-  id: number | numeric string;
-  todo: string;
-  completed: boolean;
-  userId: number | numeric string;
-  isDeleted: true;
-  deletedOn: string;
-}
-```
-
-#### Output
-
-```ts
-{
-  id: number;
-  todo: string;
-  completed: boolean;
-  userId: number;
-  isDeleted: true;
-  deletedOn: string;
-}
-```
+- Input
+    ```ts
+    {
+      id: number | numeric string;
+      todo: string;
+      completed: boolean;
+      userId: number | numeric string;
+      isDeleted: true;
+      deletedOn: string;
+    }
+    ```
+- Output
+    ```ts
+    {
+      id: number;
+      todo: string;
+      completed: boolean;
+      userId: number;
+      isDeleted: true;
+      deletedOn: string;
+    }
+    ```
 
 #### Logic Breakdown
 
-`todoSchema.extend(...)`
-
-นำกฎทั้งหมดของ Todo มาใช้ต่อ แล้วเพิ่มสอง Field
-
-`isDeleted`
-
-```ts
-z.literal(true)
-```
-
-ต้องเป็นค่า `true` เท่านั้น ไม่ใช่ Boolean ทั่วไป ดังนั้น `false`, `1` หรือ `"true"` ไม่ผ่าน
-
-Literal นี้ทำให้ Response ยืนยันเชิง Semantic ว่า Operation ที่เรียกเป็นการลบสำเร็จจริงตาม Contract
-
-`deletedOn`
-
-```ts
-z.iso.datetime()
-```
-
-ต้องเป็น String ที่มีรูปแบบ ISO Date-time ที่ถูกต้อง ตัวอย่างเช่น
-
-```text
-2026-08-06T12:30:00.000Z
-```
-
-Schema ตรวจรูปแบบแต่ Output ยังคงเป็น String ไม่ได้แปลงเป็น JavaScript `Date`
+- `todoSchema.extend(...)`: นำกฎทั้งหมดของ Todo มาใช้ต่อ แล้วเพิ่มสอง Field
+- `isDeleted`: `z.literal(true)` 
+    ต้องเป็นค่า `true` เท่านั้น ไม่ใช่ Boolean ทั่วไป ดังนั้น `false`, `1` หรือ `"true"` ไม่ผ่าน
+    Literal นี้ทำให้ Response ยืนยันเชิง Semantic ว่า Operation ที่เรียกเป็นการลบสำเร็จจริงตาม Contract
+- `deletedOn`:  `z.iso.datetime()`
+    ต้องเป็น String ที่มีรูปแบบ ISO Date-time ที่ถูกต้อง ตัวอย่างเช่น `2026-08-06T12:30:00.000Z`
+    Schema ตรวจรูปแบบแต่ Output ยังคงเป็น String ไม่ได้แปลงเป็น JavaScript `Date`
 
 #### Edge Cases
 
@@ -643,31 +544,21 @@ Schema ตรวจรูปแบบแต่ Output ยังคงเป็�
 export const randomTodoCountSchema = z.number().int().min(1).max(10);
 ```
 
-#### Overview
-
 Schema นี้ตรวจค่าจำนวน Todo ที่ Caller ต้องการสุ่มก่อนนำค่าไปสร้าง URL Endpoint
 
 แม้ไม่ใช่ HTTP Response Contract แต่เป็น Boundary Contract ระหว่าง UI หรือ Function Caller กับ API Client
 
-#### Input
-
-```ts
-number
-```
-
-#### Output
-
-Number เดิม เมื่อเป็นจำนวนเต็มตั้งแต่ 1 ถึง 10
-
-```text
-1  → ผ่าน
-5  → ผ่าน
-10 → ผ่าน
-0  → ไม่ผ่าน
-11 → ไม่ผ่าน
-2.5 → ไม่ผ่าน
-"5" → ไม่ผ่าน
-```
+- Input: `number`
+- Output: Number เดิม เมื่อเป็นจำนวนเต็มตั้งแต่ 1 ถึง 10
+    ```text
+    1  → ผ่าน
+    5  → ผ่าน
+    10 → ผ่าน
+    0  → ไม่ผ่าน
+    11 → ไม่ผ่าน
+    2.5 → ไม่ผ่าน
+    "5" → ไม่ผ่าน
+    ```
 
 #### เหตุผลที่ไม่ใช้ Coercion
 
@@ -692,8 +583,6 @@ Number เดิม เมื่อเป็นจำนวนเต็มตั
 ---
 
 ## Type
-
-แก่นสำคัญ:
 
 Type ทั้งหมดใช้ `z.infer<typeof schema>` เพื่อให้ Schema เป็น Single Source of Truth
 
