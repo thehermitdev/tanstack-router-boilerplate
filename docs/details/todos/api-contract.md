@@ -10,7 +10,7 @@ API Contract คือข้อตกลงเรื่อง “รูปร่
 ตำแหน่งของ Contract อยู่ที่ Boundary ระหว่างข้อมูลภายนอกกับ Feature
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[ข้อมูลจาก Form หรือ Function Caller] --> B[Input Schema]
     B -->|ผ่าน| C[API Client]
     B -->|ไม่ผ่าน| D[ZodError]
@@ -211,7 +211,7 @@ limit = -1 → ไม่ผ่าน
 
 ```mermaid
 flowchart TD
-    A[HTTP List Response] --> B{todosListResponseSchema.parse}
+    A[HTTP List Response] --> B[todosListResponseSchema.parse]
     B --> C[Parse todos Array]
     C --> D[Parse Todo แต่ละรายการ]
     D --> E[Normalize total skip limit]
