@@ -1,66 +1,93 @@
 # แนวทางการเขียน Test สำหรับ Todos API Contract
 
-ไฟล์ Test: `src/features/todos/api/contract.test.ts`
+ไฟล์ Test: `src/features/todos/api/contracts.test.ts`
 
 ไฟล์ Production ที่ทดสอบ: `src/features/todos/api/contracts.ts`
 
-เอกสารนี้อธิบายวิธีเขียน Unit Test สำหรับ API Contract ของโมดูล Todos ด้วย Vitest ตั้งแต่การติดตั้ง การออกแบบ Test Case การเขียน Test ฉบับเต็ม การรัน Test ไปจนถึงการวิเคราะห์ Coverage และข้อควรระวังสำหรับ Production
+เอกสารนี้อธิบายแนวทางเขียน Unit Test สำหรับ Runtime Contract ของโมดูล Todos ด้วย Vitest ตั้งแต่การเตรียม Test Runner, การออกแบบ Test Matrix, การเขียน Test Case, การทดสอบ Boundary และ Normalization ไปจนถึงการรัน Coverage และแนวทางดูแล Test เมื่อ Contract เปลี่ยน
 
-> Naming note: ไฟล์ Production ใช้ชื่อ `contracts.ts` แบบพหูพจน์ แต่เอกสารนี้ใช้ชื่อ Test `contract.test.ts` ตามชื่อที่กำหนดไว้ หากทีมต้องการให้ชื่อ Test mirror กับ Production file แบบ 1:1 สามารถเปลี่ยนชื่อเป็น `contracts.test.ts` ได้โดยไม่กระทบเนื้อหา Test เพราะยัง Import จาก `./contracts` เหมือนเดิม
+> เอกสารนี้ต่อเนื่องจาก [การสร้าง API Contract](./api-contract.md) ดังนั้นควรสร้าง `src/features/todos/api/contracts.ts` ตามหัวข้อนั้นก่อน
 
-เอกสาร Contract หลักอยู่ที่ [API Contract](./api-contract.md)
-
----
-
-## 1. เป้าหมายของ Contract Test
-
-`contracts.ts` เป็น Runtime Boundary ของ Feature ทำหน้าที่ตรวจและ Normalize ข้อมูลก่อนที่ข้อมูลจะผ่านเข้าออกโมดูล Todos
-
-Contract Test จึงไม่ได้ตรวจ HTTP, Axios, TanStack Query หรือ React แต่ตรวจว่า Zod Schema ทำงานตามกฎที่ออกแบบไว้จริง
+เป้าหมายของ Contract Test ไม่ใช่การพิสูจน์ว่า Zod ทำงานได้ แต่คือการพิสูจน์ว่า **กฎของ Application ที่เราเขียนด้วย Zod ตรงกับ Runtime Contract ที่เราต้องการจริง**
 
 ```mermaid
 flowchart LR
-    A[unknown input] --> B[Zod Schema]
+    A[unknown input] --> B[Zod Contract]
     B -->|valid| C[Validated / Normalized Data]
-    B -->|invalid| D[Validation Failure]
+    B -->|invalid| D[ZodError]
 
-    E[contract.test.ts] --> B
+    E[contracts.test.ts] --> B
+    E --> F[Happy Path]
+    E --> G[Normalization]
+    E --> H[Boundary]
+    E --> I[Invalid Input]
+    E --> J[Schema Composition]
+    E --> K[Type Inference]
 ```
 
-สิ่งที่ Test Suite ต้องพิสูจน์มี 4 กลุ่มหลัก
-
-1. **Happy Path** — ข้อมูลที่ถูกต้องต้องผ่าน
-2. **Normalization** — ค่าที่ Schema ตั้งใจแปลง เช่น Numeric String และ `.trim()` ต้องได้ Output ที่ถูกต้อง
-3. **Boundary Value** — ค่าต่ำสุด สูงสุด ศูนย์ จำนวนติดลบ จำนวนทศนิยม และค่าที่อยู่เลยขอบเขตต้องมีพฤติกรรมตรง Contract
-4. **Invalid Shape / Type** — Missing Field, Wrong Type, Invalid Nested Data และ Invalid Collection ต้องถูกปฏิเสธ
-
-Contract Test ควรเป็น Pure Unit Test และมี Dependency ให้น้อยที่สุด
-
-```mermaid
-flowchart LR
-    A[Vitest] --> B[contract.test.ts]
-    B --> C[contracts.ts]
-    C --> D[Zod]
-```
-
-ไม่จำเป็นต้องใช้
-
-- MSW
-- Axios Mock
-- React Testing Library
-- DOM / jsdom
-- TanStack Query `QueryClient`
-- Network Request
-
-สิ่งเหล่านี้ควรไปอยู่ใน Integration Test ของ Layer ที่เกี่ยวข้อง เช่น `client.test.ts`
+Contract Test ในไฟล์นี้เป็น **Pure Unit Test** จึงไม่ต้องใช้ Axios, MSW, TanStack Query, React Testing Library หรือ DOM
 
 ---
 
-## 2. Contract ที่ต้องครอบคลุม
+## 1. สิ่งที่เราจะทดสอบ
 
-`src/features/todos/api/contracts.ts` ประกอบด้วย Schema หลัก 7 ตัว
+`contracts.ts` ของ Tutorial มี Schema หลัก 7 ตัว
+
+```text
+todoSchema
+  → Entity Contract
+
+todosListResponseSchema
+  → List Response Contract
+
+randomTodosSchema
+  → Random Collection Response Contract
+
+createTodoInputSchema
+  → Create Command Contract
+
+updateTodoInputSchema
+  → Update Command Contract
+
+deletedTodoSchema
+  → Delete Response Contract
+
+randomTodoCountSchema
+  → Random Count Control Contract
+```
+
+แนวทางนี้จัด `describe()` ให้ตรงกับ Schema แบบ 1:1 และเพิ่ม Type-level Contract อีกหนึ่งกลุ่ม เพื่อให้เปิด `contracts.ts` และ `contracts.test.ts` เทียบกันได้ง่าย
+
+```mermaid
+flowchart TD
+    A[contracts.ts] --> B[todoSchema]
+    A --> C[todosListResponseSchema]
+    A --> D[randomTodosSchema]
+    A --> E[createTodoInputSchema]
+    A --> F[updateTodoInputSchema]
+    A --> G[deletedTodoSchema]
+    A --> H[randomTodoCountSchema]
+
+    B --> BT[describe todoSchema]
+    C --> CT[describe todosListResponseSchema]
+    D --> DT[describe randomTodosSchema]
+    E --> ET[describe createTodoInputSchema]
+    F --> FT[describe updateTodoInputSchema]
+    G --> GT[describe deletedTodoSchema]
+    H --> HT[describe randomTodoCountSchema]
+
+    A --> TT[describe inferred contract types]
+```
+
+---
+
+## 2. Prerequisite: Contract ที่ Test ชุดนี้อ้างอิง
+
+ก่อนเขียน Test ต้องมี `src/features/todos/api/contracts.ts` ตาม Tutorial ดังนี้
 
 ```ts
+import { z } from "zod";
+
 export const todoSchema = z.object({
   id: z.coerce.number().int().positive(),
   todo: z.string().trim().min(1),
@@ -96,116 +123,205 @@ export const deletedTodoSchema = todoSchema.extend({
 });
 
 export const randomTodoCountSchema = z.number().int().min(1).max(10);
+
+export type CreateTodoInput = z.infer<typeof createTodoInputSchema>;
+export type DeletedTodo = z.infer<typeof deletedTodoSchema>;
+export type Todo = z.infer<typeof todoSchema>;
+export type TodosListResponse = z.infer<typeof todosListResponseSchema>;
+export type UpdateTodoInput = z.infer<typeof updateTodoInputSchema>;
 ```
 
-ดังนั้น Test Suite จะจัดโครงสร้างแบบ 1 Schema ต่อ 1 `describe()`
-
-```mermaid
-flowchart TD
-    A[contract.test.ts]
-    A --> B[describe todoSchema]
-    A --> C[describe todosListResponseSchema]
-    A --> D[describe randomTodosSchema]
-    A --> E[describe createTodoInputSchema]
-    A --> F[describe updateTodoInputSchema]
-    A --> G[describe deletedTodoSchema]
-    A --> H[describe randomTodoCountSchema]
-    A --> I[describe inferred contract types]
-```
+Test ต่อจากนี้ผูกกับกฎของ Contract ชุดนี้ หาก Schema เปลี่ยน Test ต้องถูกทบทวนพร้อมกัน
 
 ---
 
 ## 3. ติดตั้ง Vitest
 
-หากโปรเจ็กต์ที่สร้างจาก Boilerplate ยังไม่ได้ติดตั้ง Vitest ให้ติดตั้งก่อน
+Repository ใช้ Bun ดังนั้นติดตั้ง Vitest เป็น Development Dependency
 
 ```bash
 bun add -D vitest @vitest/coverage-v8
 ```
 
-สำหรับ Contract Test นี้ไม่จำเป็นต้องติดตั้ง `jsdom` เพราะไม่มี DOM
+- `vitest` คือ Test Runner
+- `@vitest/coverage-v8` ใช้สร้าง Code Coverage ด้วย V8
 
-เพิ่ม Script ใน `package.json`
+สำหรับ Contract Test นี้ไม่จำเป็นต้องติดตั้ง `jsdom` เพราะไม่มี React Component หรือ Browser API
+
+---
+
+## 4. เพิ่ม Test Scripts
+
+เพิ่มคำสั่งต่อไปนี้ใน `scripts` ของ `package.json`
 
 ```json
 {
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:contracts": "vitest run src/features/todos/api/contracts.test.ts"
   }
 }
 ```
 
-ให้นำ Script ทั้งสามรายการไปรวมกับ `scripts` เดิมของโปรเจ็กต์ ไม่ใช่แทนที่ Script เดิมทั้งหมด
-
-คำสั่งหลักจะมีความหมายดังนี้
+ให้นำเฉพาะ Script เหล่านี้ไปรวมกับ Script เดิมของ Repository ไม่ใช่แทนที่ `scripts` ทั้งหมด
 
 | คำสั่ง | หน้าที่ |
 | --- | --- |
-| `bun run test` | รัน Test ทั้งหมดหนึ่งครั้ง เหมาะกับ CI |
-| `bun run test:watch` | เปิด Vitest Watch Mode ระหว่าง Development |
-| `bun run test:coverage` | รัน Test พร้อม Coverage |
+| `bun run test` | รัน Test ทั้งหมดหนึ่งรอบ เหมาะกับ CI |
+| `bun run test:watch` | Watch ไฟล์และรันใหม่เมื่อ Source/Test เปลี่ยน |
+| `bun run test:coverage` | รัน Test พร้อมสร้าง Coverage |
+| `bun run test:contracts` | รันเฉพาะ Todos API Contract Test |
 
 ---
 
-## 4. สร้างไฟล์ Test
+## 5. ตำแหน่งไฟล์ Test
 
 สร้างไฟล์
 
 ```text
-src/features/todos/api/contract.test.ts
+src/features/todos/api/contracts.test.ts
 ```
 
-โครงสร้างจะเป็น
+โครงสร้างที่ได้
 
 ```text
 src/
 └── features/
     └── todos/
         └── api/
-            ├── client.ts
             ├── contracts.ts
-            ├── contract.test.ts
-            ├── mutations.ts
-            └── queries.ts
+            ├── contracts.test.ts
+            ├── client.ts
+            ├── client.test.ts
+            ├── queries.ts
+            └── mutations.ts
 ```
 
-การวาง Test ข้าง Production Code เรียกว่า **Colocated Test** ทำให้ Ownership ชัดเจนและค้นหา Test ของแต่ละโมดูลได้ง่าย
-
----
-
-## 5. Test Case Matrix
-
-ก่อนเขียน Test ควรแปลง Schema เป็นรายการพฤติกรรมที่ต้องพิสูจน์ก่อน
-
-| Schema | Happy Path | Normalization | Boundary | Invalid |
-| --- | --- | --- | --- | --- |
-| `todoSchema` | Todo ครบทุก Field | Numeric String, Trim | Positive Integer | Missing/Wrong Type/Empty Text |
-| `todosListResponseSchema` | List ปกติ | Pagination String → Number | `0` สำหรับ nonnegative | Invalid Nested Todo/Negative/Decimal |
-| `randomTodosSchema` | Array 1–10 | Nested Todo Normalize | 1 และ 10 | 0, 11, Invalid Todo |
-| `createTodoInputSchema` | Create Payload | Trim | 3 และ 300 chars | Too Short/Long, Invalid User ID |
-| `updateTodoInputSchema` | Partial Update | Trim | อย่างน้อย 1 Field | `{}`, Invalid Field Value |
-| `deletedTodoSchema` | Deleted Todo | Base Todo Normalize | `isDeleted === true` | Invalid ISO Date/False/Missing |
-| `randomTodoCountSchema` | 1–10 | ไม่มี Coercion | 1 และ 10 | 0, 11, Decimal, String |
-
-แนวคิดสำคัญคือไม่ต้องสุ่ม Test ทุกตัวเลขที่เป็นไปได้ แต่ต้องครอบคลุม **Equivalence Classes** และ **Boundary Values** ของทุกกฎ
-
-ตัวอย่างสำหรับ `randomTodoCountSchema`
+ใช้แนวทาง **Colocated Test** คือวาง Test อยู่ใกล้ Source ที่มันรับผิดชอบ
 
 ```text
-< 1       → Invalid Class
-1         → Minimum Boundary
-2..9      → Valid Class
-10        → Maximum Boundary
-> 10      → Invalid Class
-Decimal   → Invalid Class
-String    → Invalid Type Class
+contracts.ts
+    ↓
+contracts.test.ts
+
+client.ts
+    ↓
+client.test.ts
 ```
+
+Responsibility ต้องไม่ปะปนกัน
+
+```mermaid
+flowchart LR
+    A[contracts.test.ts] --> B[Zod Rules]
+    A --> C[Normalization]
+    A --> D[Boundary Cases]
+    A --> E[Invalid Values]
+    A --> F[Type Inference]
+
+    G[client.test.ts] --> H[HTTP Request]
+    G --> I[MSW Response]
+    G --> J[Contract Integration]
+    G --> K[ApplicationError Mapping]
+```
+
+`contracts.test.ts` จึงไม่ควรมี `vi.mock()`, MSW Server, Axios, QueryClient หรือ DOM
 
 ---
 
-## 6. โค้ดฉบับเต็ม: `contract.test.ts`
+## 6. Test Strategy
+
+แต่ละ Schema ควรถูกตรวจอย่างน้อย 5 มิติ
+
+1. **Happy Path** — ข้อมูลที่ถูกต้องต้องผ่าน
+2. **Normalization** — Transformation เช่น `trim()` และ `coerce` ต้องได้ Output ที่คาดหวัง
+3. **Boundary** — ค่าต่ำสุด/สูงสุดต้องถูกต้อง
+4. **Invalid Input** — ชนิดข้อมูลและค่าที่ผิดต้องถูกปฏิเสธ
+5. **Composition** — Schema ที่ประกอบจาก Schema อื่นต้องรักษากฎของ Schema ต้นทาง
+
+และควรตรวจเพิ่มอีกหนึ่งมิติสำหรับ Contract ที่ Infer Type จาก Zod
+
+6. **Type Inference** — Runtime Schema และ TypeScript Type ต้องไม่แยกออกจากกัน
+
+Test Matrix หลักของไฟล์นี้คือ
+
+| Schema | Happy Path | Normalize | Boundary | Invalid Type/Value | Composition/Structure |
+| --- | --- | --- | --- | --- | --- |
+| `todoSchema` | ✓ | ✓ | Positive Integer | ✓ | Required/Unknown Fields |
+| `todosListResponseSchema` | ✓ | ✓ | Non-negative Integer | ✓ | Nested `todoSchema` |
+| `randomTodosSchema` | ✓ | ✓ | 1–10 | ✓ | Nested `todoSchema` |
+| `createTodoInputSchema` | ✓ | ✓ | 3–300 chars | ✓ | Required/Command Fields |
+| `updateTodoInputSchema` | ✓ | ✓ | อย่างน้อย 1 Field | ✓ | Derived from Create Schema |
+| `deletedTodoSchema` | ✓ | ✓ | `isDeleted === true` | ✓ | Extends `todoSchema` |
+| `randomTodoCountSchema` | ✓ | - | 1–10 | ✓ | No Coercion |
+
+---
+
+## 7. `parse()` กับ `safeParse()` ใช้ต่างกันอย่างไร
+
+Happy Path ควรใช้ `parse()` เพราะเราต้องตรวจ Output ที่ผ่าน Validation และ Transformation แล้ว
+
+```ts
+const result = todoSchema.parse(input);
+
+expect(result).toEqual(expected);
+```
+
+Invalid Case ส่วนใหญ่ควรใช้ `safeParse()`
+
+```ts
+const result = todoSchema.safeParse(input);
+
+expect(result.success).toBe(false);
+```
+
+เหตุผลคือ Test ต้องการสื่อว่า “Contract ปฏิเสธ Input นี้” มากกว่าจะผูกกับกลไกการ Throw ของ Zod
+
+ใช้ `parse()` + `toThrow()` เมื่อเราต้องการตรวจพฤติกรรมการ Throw โดยเฉพาะ แต่สำหรับ Validation Matrix ทั่วไป `safeParse()` อ่านง่ายกว่าและให้ข้อมูล Error สำหรับ Assertion เพิ่มเติมได้
+
+---
+
+## 8. ใช้ Table-Driven Testing กับ Validation Cases
+
+ถ้า Test Logic เหมือนกันแต่ Input ต่างกัน ควรใช้ `it.each()`
+
+แทนที่จะเขียนซ้ำ
+
+```ts
+it("rejects zero id", () => {
+  // ...
+});
+
+it("rejects negative id", () => {
+  // ...
+});
+
+it("rejects decimal id", () => {
+  // ...
+});
+```
+
+ให้เขียน
+
+```ts
+it.each([
+  ["zero", 0],
+  ["negative", -1],
+  ["decimal", 1.5],
+])("rejects invalid id: %s", (_, id) => {
+  // ...
+});
+```
+
+ข้อดีคือเห็น Test Matrix ชัด ลด Copy/Paste และเพิ่ม Edge Case ได้ง่าย
+
+---
+
+# 9. โค้ด `contracts.test.ts` ฉบับเต็ม
+
+สร้างไฟล์ `src/features/todos/api/contracts.test.ts` ด้วยโค้ดต่อไปนี้
 
 ```ts
 import { describe, expect, expectTypeOf, it } from "vitest";
@@ -232,6 +348,18 @@ const validTodo = {
   todo: "Buy milk",
   completed: false,
   userId: 10,
+};
+
+const validCreateInput = {
+  todo: "Buy milk",
+  completed: false,
+  userId: 10,
+};
+
+const validDeletedTodo = {
+  ...validTodo,
+  isDeleted: true as const,
+  deletedOn: "2026-08-08T00:00:00.000Z",
 };
 
 function createTodos(count: number) {
@@ -376,17 +504,6 @@ describe("todoSchema", () => {
       expect(result.success).toBe(false);
     },
   );
-
-  it("documents that z.coerce.number currently converts true to 1", () => {
-    const result = todoSchema.parse({
-      ...validTodo,
-      id: true,
-      userId: true,
-    });
-
-    expect(result.id).toBe(1);
-    expect(result.userId).toBe(1);
-  });
 });
 
 describe("todosListResponseSchema", () => {
@@ -403,18 +520,6 @@ describe("todosListResponseSchema", () => {
     expect(result).toEqual(validListResponse);
   });
 
-  it("accepts an empty todos array", () => {
-    const result = todosListResponseSchema.parse({
-      todos: [],
-      total: 0,
-      skip: 0,
-      limit: 30,
-    });
-
-    expect(result.todos).toEqual([]);
-    expect(result.total).toBe(0);
-  });
-
   it("coerces pagination metadata from numeric strings to numbers", () => {
     const result = todosListResponseSchema.parse({
       todos: [validTodo],
@@ -423,9 +528,12 @@ describe("todosListResponseSchema", () => {
       limit: "30",
     });
 
-    expect(result.total).toBe(100);
-    expect(result.skip).toBe(30);
-    expect(result.limit).toBe(30);
+    expect(result).toEqual({
+      todos: [validTodo],
+      total: 100,
+      skip: 30,
+      limit: 30,
+    });
   });
 
   it("normalizes nested todos through todoSchema", () => {
@@ -446,17 +554,61 @@ describe("todosListResponseSchema", () => {
     expect(result.todos[0]).toEqual(validTodo);
   });
 
-  it.each([
-    ["total", 0],
-    ["skip", 0],
-    ["limit", 0],
-  ] as const)("accepts zero for nonnegative field %s", (field, value) => {
-    const result = todosListResponseSchema.safeParse({
-      ...validListResponse,
-      [field]: value,
+  it("allows an empty todos array", () => {
+    const result = todosListResponseSchema.parse({
+      todos: [],
+      total: 0,
+      skip: 0,
+      limit: 30,
     });
 
-    expect(result.success).toBe(true);
+    expect(result.todos).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
+  it("allows zero for nonnegative pagination metadata", () => {
+    const result = todosListResponseSchema.parse({
+      todos: [],
+      total: 0,
+      skip: 0,
+      limit: 0,
+    });
+
+    expect(result).toEqual({
+      todos: [],
+      total: 0,
+      skip: 0,
+      limit: 0,
+    });
+  });
+
+  it("rejects the entire response when one nested todo is invalid", () => {
+    const result = todosListResponseSchema.safeParse({
+      todos: [
+        validTodo,
+        {
+          ...validTodo,
+          id: 2,
+          todo: "",
+        },
+      ],
+      total: 2,
+      skip: 0,
+      limit: 30,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects todos when it is not an array", () => {
+    const result = todosListResponseSchema.safeParse({
+      todos: validTodo,
+      total: 1,
+      skip: 0,
+      limit: 30,
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it.each([
@@ -476,7 +628,7 @@ describe("todosListResponseSchema", () => {
     ["total", 1.5],
     ["skip", 1.5],
     ["limit", 1.5],
-  ] as const)("rejects decimal %s", (field, value) => {
+  ] as const)("rejects non-integer %s", (field, value) => {
     const result = todosListResponseSchema.safeParse({
       ...validListResponse,
       [field]: value,
@@ -498,32 +650,6 @@ describe("todosListResponseSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects todos when it is not an array", () => {
-    const result = todosListResponseSchema.safeParse({
-      ...validListResponse,
-      todos: validTodo,
-    });
-
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects the entire response when one nested todo is invalid", () => {
-    const result = todosListResponseSchema.safeParse({
-      ...validListResponse,
-      todos: [
-        validTodo,
-        {
-          ...validTodo,
-          id: 2,
-          todo: "   ",
-        },
-      ],
-      total: 2,
-    });
-
-    expect(result.success).toBe(false);
-  });
-
   it.each(["todos", "total", "skip", "limit"] as const)(
     "rejects response when required field %s is missing",
     (field) => {
@@ -536,47 +662,44 @@ describe("todosListResponseSchema", () => {
     },
   );
 
-  it("strips unknown response fields", () => {
+  it("strips unknown response fields by default", () => {
     const result = todosListResponseSchema.parse({
       ...validListResponse,
-      serverDebug: "ignored",
+      unexpected: "ignored",
     });
 
-    expect(result).not.toHaveProperty("serverDebug");
+    expect(result).toEqual(validListResponse);
+    expect(result).not.toHaveProperty("unexpected");
   });
 
-  it("documents that cross-field pagination consistency is not enforced", () => {
-    const result = todosListResponseSchema.safeParse({
-      todos: createTodos(2),
-      total: 1,
-      skip: 100,
+  it("does not enforce relationships between total, limit, and todos.length", () => {
+    const result = todosListResponseSchema.parse({
+      todos: [validTodo],
+      total: 0,
+      skip: 0,
       limit: 0,
     });
 
-    expect(result.success).toBe(true);
+    expect(result.todos).toHaveLength(1);
+    expect(result.total).toBe(0);
+    expect(result.limit).toBe(0);
   });
 });
 
 describe("randomTodosSchema", () => {
-  it("accepts one todo at the minimum array boundary", () => {
+  it("accepts one todo at the minimum collection size", () => {
     const result = randomTodosSchema.parse(createTodos(1));
 
     expect(result).toHaveLength(1);
   });
 
-  it("accepts ten todos at the maximum array boundary", () => {
+  it("accepts ten todos at the maximum collection size", () => {
     const result = randomTodosSchema.parse(createTodos(10));
 
     expect(result).toHaveLength(10);
   });
 
-  it("accepts a representative count inside the valid range", () => {
-    const result = randomTodosSchema.parse(createTodos(5));
-
-    expect(result).toHaveLength(5);
-  });
-
-  it("normalizes nested todos", () => {
+  it("normalizes every todo through todoSchema", () => {
     const result = randomTodosSchema.parse([
       {
         id: "1",
@@ -586,7 +709,7 @@ describe("randomTodosSchema", () => {
       },
     ]);
 
-    expect(result[0]).toEqual(validTodo);
+    expect(result).toEqual([validTodo]);
   });
 
   it("rejects an empty array", () => {
@@ -601,13 +724,7 @@ describe("randomTodosSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects a non-array value", () => {
-    const result = randomTodosSchema.safeParse(validTodo);
-
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects the collection when one todo is invalid", () => {
+  it("rejects the collection when one nested todo is invalid", () => {
     const result = randomTodosSchema.safeParse([
       validTodo,
       {
@@ -619,15 +736,15 @@ describe("randomTodosSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it.each([null, {}, "not-an-array", 1])("rejects non-array input: %j", (input) => {
+    const result = randomTodosSchema.safeParse(input);
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("createTodoInputSchema", () => {
-  const validCreateInput = {
-    todo: "Buy milk",
-    completed: false,
-    userId: 10,
-  };
-
   it("accepts valid create input", () => {
     const result = createTodoInputSchema.parse(validCreateInput);
 
@@ -643,7 +760,7 @@ describe("createTodoInputSchema", () => {
     expect(result.completed).toBe(true);
   });
 
-  it("trims todo text before returning the parsed input", () => {
+  it("trims todo text", () => {
     const result = createTodoInputSchema.parse({
       ...validCreateInput,
       todo: "  Buy milk  ",
@@ -652,7 +769,7 @@ describe("createTodoInputSchema", () => {
     expect(result.todo).toBe("Buy milk");
   });
 
-  it("accepts todo text at the minimum length of three characters", () => {
+  it("accepts todo text at the minimum length", () => {
     const result = createTodoInputSchema.parse({
       ...validCreateInput,
       todo: "abc",
@@ -661,7 +778,7 @@ describe("createTodoInputSchema", () => {
     expect(result.todo).toBe("abc");
   });
 
-  it("accepts todo text at the maximum length of 300 characters", () => {
+  it("accepts todo text at the maximum length", () => {
     const todo = "a".repeat(300);
 
     const result = createTodoInputSchema.parse({
@@ -672,19 +789,16 @@ describe("createTodoInputSchema", () => {
     expect(result.todo).toHaveLength(300);
   });
 
-  it.each(["", "a", "ab", "  ab  "])(
-    "rejects todo text shorter than three characters after trimming: %j",
-    (todo) => {
-      const result = createTodoInputSchema.safeParse({
-        ...validCreateInput,
-        todo,
-      });
+  it("rejects todo shorter than three characters after trimming", () => {
+    const result = createTodoInputSchema.safeParse({
+      ...validCreateInput,
+      todo: "  ab  ",
+    });
 
-      expect(result.success).toBe(false);
-    },
-  );
+    expect(result.success).toBe(false);
+  });
 
-  it("rejects todo text longer than 300 characters", () => {
+  it("rejects todo longer than 300 characters", () => {
     const result = createTodoInputSchema.safeParse({
       ...validCreateInput,
       todo: "a".repeat(301),
@@ -693,19 +807,34 @@ describe("createTodoInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it.each([123, null, undefined, true, {}, []])(
-    "rejects non-string todo value: %j",
-    (todo) => {
-      const result = createTodoInputSchema.safeParse({
-        ...validCreateInput,
-        todo,
-      });
+  it.each(["", " ", "   "])("rejects blank todo text: %j", (todo) => {
+    const result = createTodoInputSchema.safeParse({
+      ...validCreateInput,
+      todo,
+    });
 
-      expect(result.success).toBe(false);
-    },
-  );
+    expect(result.success).toBe(false);
+  });
 
-  it.each([0, -1, 1.5])("rejects invalid userId: %j", (userId) => {
+  it.each([null, undefined, 123, true])("rejects non-string todo: %j", (todo) => {
+    const result = createTodoInputSchema.safeParse({
+      ...validCreateInput,
+      todo,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it.each(["true", "false", 0, 1, null])("rejects non-boolean completed: %j", (completed) => {
+    const result = createTodoInputSchema.safeParse({
+      ...validCreateInput,
+      completed,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it.each([0, -1, 1.5])("rejects invalid numeric userId: %j", (userId) => {
     const result = createTodoInputSchema.safeParse({
       ...validCreateInput,
       userId,
@@ -714,7 +843,7 @@ describe("createTodoInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("does not coerce a string userId to number", () => {
+  it("does not coerce userId from string to number", () => {
     const result = createTodoInputSchema.safeParse({
       ...validCreateInput,
       userId: "10",
@@ -723,20 +852,8 @@ describe("createTodoInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it.each(["true", "false", 0, 1, null, undefined])(
-    "rejects non-boolean completed value: %j",
-    (completed) => {
-      const result = createTodoInputSchema.safeParse({
-        ...validCreateInput,
-        completed,
-      });
-
-      expect(result.success).toBe(false);
-    },
-  );
-
   it.each(["todo", "completed", "userId"] as const)(
-    "rejects create input when required field %s is missing",
+    "rejects input when required field %s is missing",
     (field) => {
       const input: Record<string, unknown> = { ...validCreateInput };
       delete input[field];
@@ -761,7 +878,7 @@ describe("createTodoInputSchema", () => {
 });
 
 describe("updateTodoInputSchema", () => {
-  it("accepts todo-only update", () => {
+  it("accepts a todo-only update", () => {
     const result = updateTodoInputSchema.parse({
       todo: "Updated todo",
     });
@@ -771,13 +888,23 @@ describe("updateTodoInputSchema", () => {
     });
   });
 
-  it("accepts completed-only update", () => {
+  it("accepts a completed-only update with true", () => {
     const result = updateTodoInputSchema.parse({
       completed: true,
     });
 
     expect(result).toEqual({
       completed: true,
+    });
+  });
+
+  it("accepts a completed-only update with false", () => {
+    const result = updateTodoInputSchema.parse({
+      completed: false,
+    });
+
+    expect(result).toEqual({
+      completed: false,
     });
   });
 
@@ -801,59 +928,38 @@ describe("updateTodoInputSchema", () => {
     expect(result.todo).toBe("Updated todo");
   });
 
-  it("accepts todo text at the minimum length", () => {
-    const result = updateTodoInputSchema.parse({
-      todo: "abc",
-    });
-
-    expect(result.todo).toBe("abc");
-  });
-
-  it("accepts todo text at the maximum length", () => {
-    const todo = "a".repeat(300);
-
-    const result = updateTodoInputSchema.parse({ todo });
-
-    expect(result.todo).toHaveLength(300);
-  });
-
   it("rejects an empty update object", () => {
     const result = updateTodoInputSchema.safeParse({});
 
     expect(result.success).toBe(false);
+
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            message: "ต้องมีข้อมูลอย่างน้อยหนึ่ง Field สำหรับการแก้ไข",
+          }),
+        ]),
+      );
+    }
   });
 
   it("rejects an object containing only fields outside the update contract", () => {
     const result = updateTodoInputSchema.safeParse({
       userId: 20,
-      id: 10,
+      id: 99,
     });
 
     expect(result.success).toBe(false);
   });
 
-  it("strips unknown fields when at least one valid update field exists", () => {
-    const result = updateTodoInputSchema.parse({
-      todo: "Updated todo",
-      userId: 20,
-      id: 10,
+  it("rejects todo shorter than three characters after trimming", () => {
+    const result = updateTodoInputSchema.safeParse({
+      todo: "  ab  ",
     });
 
-    expect(result).toEqual({
-      todo: "Updated todo",
-    });
-    expect(result).not.toHaveProperty("userId");
-    expect(result).not.toHaveProperty("id");
+    expect(result.success).toBe(false);
   });
-
-  it.each(["", "a", "ab", "  ab  "])(
-    "rejects todo shorter than three characters after trimming: %j",
-    (todo) => {
-      const result = updateTodoInputSchema.safeParse({ todo });
-
-      expect(result.success).toBe(false);
-    },
-  );
 
   it("rejects todo longer than 300 characters", () => {
     const result = updateTodoInputSchema.safeParse({
@@ -863,32 +969,30 @@ describe("updateTodoInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it.each([123, null, true, {}, []])(
-    "rejects non-string todo value: %j",
-    (todo) => {
-      const result = updateTodoInputSchema.safeParse({ todo });
+  it.each(["true", "false", 0, 1, null])("rejects non-boolean completed: %j", (completed) => {
+    const result = updateTodoInputSchema.safeParse({
+      completed,
+    });
 
-      expect(result.success).toBe(false);
-    },
-  );
+    expect(result.success).toBe(false);
+  });
 
-  it.each(["true", "false", 0, 1, null, {}])(
-    "rejects non-boolean completed value: %j",
-    (completed) => {
-      const result = updateTodoInputSchema.safeParse({ completed });
+  it("strips unknown fields when at least one valid update field exists", () => {
+    const result = updateTodoInputSchema.parse({
+      todo: "Updated todo",
+      userId: 999,
+      id: 123,
+    });
 
-      expect(result.success).toBe(false);
-    },
-  );
+    expect(result).toEqual({
+      todo: "Updated todo",
+    });
+    expect(result).not.toHaveProperty("userId");
+    expect(result).not.toHaveProperty("id");
+  });
 });
 
 describe("deletedTodoSchema", () => {
-  const validDeletedTodo = {
-    ...validTodo,
-    isDeleted: true,
-    deletedOn: "2026-08-08T00:00:00.000Z",
-  };
-
   it("accepts a valid deleted todo", () => {
     const result = deletedTodoSchema.parse(validDeletedTodo);
 
@@ -897,16 +1001,18 @@ describe("deletedTodoSchema", () => {
 
   it("normalizes fields inherited from todoSchema", () => {
     const result = deletedTodoSchema.parse({
-      ...validDeletedTodo,
       id: "1",
       todo: "  Buy milk  ",
+      completed: false,
       userId: "10",
+      isDeleted: true,
+      deletedOn: "2026-08-08T00:00:00.000Z",
     });
 
     expect(result).toEqual(validDeletedTodo);
   });
 
-  it("requires isDeleted to be exactly true", () => {
+  it("requires isDeleted to be literal true", () => {
     const result = deletedTodoSchema.safeParse({
       ...validDeletedTodo,
       isDeleted: false,
@@ -915,117 +1021,80 @@ describe("deletedTodoSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it.each(["true", 1, 0, null, undefined])(
-    "rejects invalid isDeleted value: %j",
-    (isDeleted) => {
-      const result = deletedTodoSchema.safeParse({
-        ...validDeletedTodo,
-        isDeleted,
-      });
+  it("rejects the response when isDeleted is missing", () => {
+    const input: Record<string, unknown> = { ...validDeletedTodo };
+    delete input.isDeleted;
 
-      expect(result.success).toBe(false);
-    },
-  );
+    const result = deletedTodoSchema.safeParse(input);
 
-  it.each([
-    "not-a-datetime",
-    "2026-08-08",
-    "08/08/2026",
-    "",
-  ])("rejects invalid deletedOn datetime: %j", (deletedOn) => {
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid deletedOn datetime", () => {
     const result = deletedTodoSchema.safeParse({
       ...validDeletedTodo,
-      deletedOn,
+      deletedOn: "not-a-datetime",
     });
 
     expect(result.success).toBe(false);
   });
 
-  it.each([null, undefined, 123, {}, []])(
-    "rejects non-string deletedOn value: %j",
-    (deletedOn) => {
-      const result = deletedTodoSchema.safeParse({
-        ...validDeletedTodo,
-        deletedOn,
-      });
+  it("rejects the response when deletedOn is missing", () => {
+    const input: Record<string, unknown> = { ...validDeletedTodo };
+    delete input.deletedOn;
 
-      expect(result.success).toBe(false);
-    },
-  );
+    const result = deletedTodoSchema.safeParse(input);
 
-  it("still rejects invalid base todo fields", () => {
+    expect(result.success).toBe(false);
+  });
+
+  it("still validates fields inherited from todoSchema", () => {
     const result = deletedTodoSchema.safeParse({
       ...validDeletedTodo,
-      todo: "   ",
+      todo: "",
     });
 
     expect(result.success).toBe(false);
   });
 
-  it.each(["isDeleted", "deletedOn"] as const)(
-    "rejects deleted todo when required field %s is missing",
-    (field) => {
-      const input: Record<string, unknown> = { ...validDeletedTodo };
-      delete input[field];
-
-      const result = deletedTodoSchema.safeParse(input);
-
-      expect(result.success).toBe(false);
-    },
-  );
-
-  it("strips unknown fields", () => {
+  it("strips unknown response fields by default", () => {
     const result = deletedTodoSchema.parse({
       ...validDeletedTodo,
       unexpected: "ignored",
     });
 
+    expect(result).toEqual(validDeletedTodo);
     expect(result).not.toHaveProperty("unexpected");
   });
 });
 
 describe("randomTodoCountSchema", () => {
-  it.each([1, 2, 5, 9, 10])("accepts valid count %i", (count) => {
+  it.each([1, 2, 5, 10])("accepts valid count %i", (count) => {
     const result = randomTodoCountSchema.parse(count);
 
     expect(result).toBe(count);
   });
 
-  it.each([0, -1, -10, 11, 100])(
-    "rejects out-of-range count %i",
-    (count) => {
-      const result = randomTodoCountSchema.safeParse(count);
-
-      expect(result.success).toBe(false);
-    },
-  );
-
-  it.each([1.1, 1.5, 9.9, 10.1])("rejects decimal count %f", (count) => {
+  it.each([0, -1, 11, 100])("rejects out-of-range count %i", (count) => {
     const result = randomTodoCountSchema.safeParse(count);
 
     expect(result.success).toBe(false);
   });
 
-  it.each(["1", "5", "10"])(
-    "does not coerce numeric string count %j",
-    (count) => {
-      const result = randomTodoCountSchema.safeParse(count);
+  it.each([1.5, 5.5, 9.9])("rejects decimal count %f", (count) => {
+    const result = randomTodoCountSchema.safeParse(count);
 
-      expect(result.success).toBe(false);
-    },
-  );
+    expect(result.success).toBe(false);
+  });
 
-  it.each([NaN, Infinity, -Infinity])(
-    "rejects non-finite number %s",
-    (count) => {
-      const result = randomTodoCountSchema.safeParse(count);
+  it.each(["1", "5", "10"])("does not coerce string count %j", (count) => {
+    const result = randomTodoCountSchema.safeParse(count);
 
-      expect(result.success).toBe(false);
-    },
-  );
+    expect(result.success).toBe(false);
+  });
 
-  it.each([null, undefined, true, false, {}, []])(
-    "rejects non-number count: %j",
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    "rejects non-finite count %s",
     (count) => {
       const result = randomTodoCountSchema.safeParse(count);
 
@@ -1035,81 +1104,134 @@ describe("randomTodoCountSchema", () => {
 });
 
 describe("inferred contract types", () => {
-  it("infers Todo from todoSchema output", () => {
-    expectTypeOf<Todo>().toEqualTypeOf<{
-      id: number;
-      todo: string;
-      completed: boolean;
-      userId: number;
-    }>();
+  it("keeps Todo aligned with todoSchema output", () => {
+    const result = todoSchema.parse(validTodo);
+
+    expectTypeOf(result).toEqualTypeOf<Todo>();
   });
 
-  it("infers TodosListResponse from the list response schema", () => {
-    expectTypeOf<TodosListResponse>().toEqualTypeOf<{
-      todos: Array<Todo>;
-      total: number;
-      skip: number;
-      limit: number;
-    }>();
+  it("keeps TodosListResponse aligned with todosListResponseSchema output", () => {
+    const result = todosListResponseSchema.parse({
+      todos: [validTodo],
+      total: 1,
+      skip: 0,
+      limit: 30,
+    });
+
+    expectTypeOf(result).toEqualTypeOf<TodosListResponse>();
   });
 
-  it("infers CreateTodoInput without server-owned fields", () => {
-    expectTypeOf<CreateTodoInput>().toEqualTypeOf<{
-      todo: string;
-      completed: boolean;
-      userId: number;
-    }>();
+  it("keeps CreateTodoInput aligned with createTodoInputSchema output", () => {
+    const result = createTodoInputSchema.parse(validCreateInput);
+
+    expectTypeOf(result).toEqualTypeOf<CreateTodoInput>();
   });
 
-  it("infers UpdateTodoInput as a partial command contract", () => {
-    expectTypeOf<UpdateTodoInput>().toEqualTypeOf<{
-      todo?: string | undefined;
-      completed?: boolean | undefined;
-    }>();
+  it("keeps UpdateTodoInput aligned with updateTodoInputSchema output", () => {
+    const result = updateTodoInputSchema.parse({
+      todo: "Updated todo",
+    });
+
+    expectTypeOf(result).toEqualTypeOf<UpdateTodoInput>();
   });
 
-  it("infers DeletedTodo with deletion metadata", () => {
-    expectTypeOf<DeletedTodo>().toEqualTypeOf<{
-      id: number;
-      todo: string;
-      completed: boolean;
-      userId: number;
-      isDeleted: true;
-      deletedOn: string;
-    }>();
+  it("keeps DeletedTodo aligned with deletedTodoSchema output", () => {
+    const result = deletedTodoSchema.parse(validDeletedTodo);
+
+    expectTypeOf(result).toEqualTypeOf<DeletedTodo>();
+  });
+
+  it("infers random todos as Todo[]", () => {
+    const result = randomTodosSchema.parse([validTodo]);
+
+    expectTypeOf(result).toEqualTypeOf<Array<Todo>>();
+  });
+
+  it("infers random todo count as number", () => {
+    const result = randomTodoCountSchema.parse(5);
+
+    expectTypeOf(result).toEqualTypeOf<number>();
   });
 });
 ```
 
 ---
 
-## 7. ทำไมใช้ทั้ง `parse()` และ `safeParse()`
+# 10. อธิบาย Test Suite ทีละส่วน
 
-ทั้งสอง API ใช้ Schema เดียวกัน แต่เหมาะกับ Test คนละประเภท
-
-### Happy Path ใช้ `parse()`
+## 10.1 Shared Fixtures
 
 ```ts
-const result = todoSchema.parse(input);
-
-expect(result).toEqual(expected);
+const validTodo = {
+  id: 1,
+  todo: "Buy milk",
+  completed: false,
+  userId: 10,
+};
 ```
 
-เหตุผลคือ Happy Path ต้องตรวจ **Output** ที่ Schema คืนกลับ ไม่ใช่แค่ตรวจว่า Input ผ่านหรือไม่
+Fixture นี้คือข้อมูลมาตรฐานที่ผ่าน `todoSchema` แน่นอน Test ที่ต้องการทำให้ Field ใดผิดจะ Override เฉพาะ Field นั้น
 
-ตัวอย่างเช่น
+```ts
+const result = todoSchema.safeParse({
+  ...validTodo,
+  id: -1,
+});
+```
+
+ข้อดีคือ Test อ่านง่ายและเห็นทันทีว่ากำลังเปลี่ยนเงื่อนไขใด
+
+`createTodos()` ใช้สร้าง Todo 1–N รายการสำหรับ Boundary ของ `randomTodosSchema`
+
+```ts
+function createTodos(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    ...validTodo,
+    id: index + 1,
+  }));
+}
+```
+
+ทุก Todo จะมี `id` ไม่ซ้ำและยังผ่าน Contract
+
+---
+
+## 10.2 `todoSchema`
+
+Schema
+
+```ts
+z.object({
+  id: z.coerce.number().int().positive(),
+  todo: z.string().trim().min(1),
+  completed: z.boolean(),
+  userId: z.coerce.number().int().positive(),
+});
+```
+
+Test ต้องพิสูจน์ว่า
+
+- Todo ปกติผ่าน
+- `completed` ใช้ได้ทั้ง `false` และ `true`
+- Numeric String ของ `id` และ `userId` ถูก Normalize เป็น Number
+- `todo` ถูก Trim
+- `id` และ `userId` ต้องเป็น Integer และมากกว่า 0
+- `todo` หลัง Trim ห้ามว่าง
+- `completed` รับ Boolean จริงเท่านั้น
+- Field ที่ Required หายไปไม่ได้
+- Unknown Field ถูก Strip ตามพฤติกรรม Default ของ Zod Object
+
+Normalization เป็นส่วนสำคัญมาก เพราะ Contract นี้ไม่ได้ทำแค่ Validation
 
 ```text
-Input
 {
   id: "1",
   todo: "  Buy milk  ",
   userId: "10"
 }
 
-        ↓ todoSchema.parse()
+        ↓ parse
 
-Output
 {
   id: 1,
   todo: "Buy milk",
@@ -1117,297 +1239,124 @@ Output
 }
 ```
 
-ถ้า Test ตรวจเพียงว่าไม่ Throw จะไม่สามารถจับ Regression ของ Normalization ได้
-
-### Invalid Path ใช้ `safeParse()`
-
-```ts
-const result = todoSchema.safeParse(input);
-
-expect(result.success).toBe(false);
-```
-
-ข้อดีคือ Test สื่อ Intent ตรงไปตรงมาว่า
-
-> Input Class นี้ต้องไม่ผ่าน Contract
-
-โดยไม่ผูก Test กับรายละเอียดการ Throw Error มากเกินไป
+Test จึงต้องตรวจ Output ด้วย ไม่ใช่ตรวจเพียงว่า `parse()` ไม่ Throw
 
 ---
 
-## 8. `todoSchema`: สิ่งที่ Test กำลังพิสูจน์
+## 10.3 `todosListResponseSchema`
 
-### 8.1 Positive Integer
-
-```ts
-id: z.coerce.number().int().positive()
-userId: z.coerce.number().int().positive()
-```
-
-จึงต้องครอบคลุม
-
-```text
-1       → ผ่าน
-"1"     → ผ่านและ Normalize เป็น 1
-0       → ไม่ผ่าน
--1      → ไม่ผ่าน
-1.5     → ไม่ผ่าน
-"1.5"   → ไม่ผ่านหลัง Coerce เพราะไม่เป็น Integer
-"abc"   → ไม่ผ่าน
-```
-
-### 8.2 String Normalization
-
-```ts
-todo: z.string().trim().min(1)
-```
-
-จึงต้องพิสูจน์ทั้ง Transformation และ Validation
-
-```text
-"  Buy milk  " → "Buy milk" → ผ่าน
-"   "          → ""         → ไม่ผ่าน
-```
-
-### 8.3 Strict Boolean
-
-```ts
-completed: z.boolean()
-```
-
-`z.boolean()` ไม่ได้ Coerce ค่า
-
-```text
-true      → ผ่าน
-false     → ผ่าน
-"false"   → ไม่ผ่าน
-1         → ไม่ผ่าน
-0         → ไม่ผ่าน
-```
-
-### 8.4 Missing Required Field
-
-ทุก Field ใน `todoSchema` เป็น Required ดังนั้น Test ใช้ Table-driven Testing ลบ Field ทีละตัวและพิสูจน์ว่า Schema ปฏิเสธทั้งหมด
-
----
-
-## 9. ข้อควรระวังสำคัญของ `z.coerce.number()`
-
-`z.coerce.number()` ใช้แนวคิดการแปลงค่าเป็น Number ก่อน Validation ดังนั้น Input บางชนิดที่ไม่ใช่ Numeric String อาจถูกแปลงได้
-
-ตัวอย่างสำคัญ
-
-```ts
-Number(true); // 1
-```
-
-ด้วย Contract ปัจจุบัน
-
-```ts
-z.coerce.number().int().positive()
-```
-
-`true` จึงสามารถกลายเป็น `1` และผ่าน Positive Integer Rule ได้
-
-Test Suite จึงมี Characterization Test นี้
-
-```ts
-it("documents that z.coerce.number currently converts true to 1", () => {
-  // ...
-});
-```
-
-Test นี้ไม่ได้หมายความว่า Boolean เป็น Input ที่ระบบต้องการสนับสนุน แต่ทำหน้าที่ **บันทึกพฤติกรรมจริงของ Contract ปัจจุบัน** เพื่อไม่ให้ทีมเข้าใจผิดว่า `z.coerce.number()` ยอมรับเฉพาะ Number และ Numeric String
-
-หาก Production Requirement ต้องการรับเฉพาะ
-
-```text
-number | numeric string
-```
-
-ควร Harden Schema แทนการพึ่ง `z.coerce.number()` แบบกว้าง แล้วปรับ Test ให้ Boolean ถูก Reject
-
----
-
-## 10. `todosListResponseSchema`: Fail Fast ของ Nested Data
-
-```ts
-todos: z.array(todoSchema)
-```
-
-หมายความว่า Todo ทุกตัวต้องผ่าน `todoSchema`
+Schema นี้ตรวจสองระดับ
 
 ```mermaid
 flowchart TD
-    A[List Response] --> B[todos array]
-    B --> C1[todoSchema item 1]
-    B --> C2[todoSchema item 2]
-    B --> C3[todoSchema item N]
-    C1 --> D{ทุก Item Valid?}
-    C2 --> D
-    C3 --> D
-    D -->|Yes| E[Valid List Response]
-    D -->|No| F[Reject Entire Response]
+    A[List Response] --> B[todos ต้องเป็น Array]
+    B --> C[todoSchema ทุกสมาชิก]
+    A --> D[total]
+    A --> E[skip]
+    A --> F[limit]
+
+    C --> G[Validated Todo Array]
+    D --> H[Non-negative Integer]
+    E --> H
+    F --> H
 ```
 
-นี่เป็น Fail-fast Boundary ที่สำคัญ เพราะไม่ควรปล่อย Partial Invalid Data เข้า TanStack Query Cache
+Test จึงครอบคลุมทั้ง
 
-Test จึงต้องมีกรณีที่ Todo เพียงหนึ่งตัว Invalid แล้ว Response ทั้งก้อน Fail
+- Response ปกติ
+- Numeric Metadata ที่เป็น String
+- Nested Todo Normalization
+- Empty Array
+- `total = 0`, `skip = 0`, `limit = 0`
+- Nested Todo เพียงตัวเดียวผิดทำให้ Response ทั้งก้อน Fail
+- Metadata ติดลบ
+- Metadata เป็น Decimal
+- Metadata ไม่ใช่ Numeric Value
+- Required Field หาย
+- Unknown Field
 
----
+Test นี้ยังตั้งใจบันทึก Scope ปัจจุบันของ Contract ว่า **ไม่ได้ตรวจความสัมพันธ์ระหว่าง `todos.length`, `total`, `skip`, `limit`**
 
-## 11. `nonnegative()` และ Boundary ของ Pagination
-
-```ts
-total: z.coerce.number().int().nonnegative()
-skip: z.coerce.number().int().nonnegative()
-limit: z.coerce.number().int().nonnegative()
-```
-
-คำว่า `nonnegative()` หมายถึง
-
-```text
-value >= 0
-```
-
-ดังนั้น `0` ต้องผ่าน ซึ่งแตกต่างจาก `.positive()`
-
-```text
-0  → ผ่าน
-1  → ผ่าน
--1 → ไม่ผ่าน
-```
-
-โดยเฉพาะ `limit=0` เป็น Case ที่ต้อง Lock ไว้ด้วย Test เพราะ DummyJSON รองรับค่าดังกล่าว
-
----
-
-## 12. Cross-field Validation ที่ Contract ปัจจุบันไม่ได้ตรวจ
-
-Schema ปัจจุบัน Validate Pagination Metadata แบบ Field-by-field แต่ไม่ได้ตรวจความสัมพันธ์ระหว่าง Field
-
-ตัวอย่างนี้ยังผ่าน
+ตัวอย่างนี้จึงยังผ่าน Schema ปัจจุบัน
 
 ```ts
 {
-  todos: [todo1, todo2],
-  total: 1,
-  skip: 100,
+  todos: [validTodo],
+  total: 0,
+  skip: 0,
   limit: 0,
 }
 ```
 
-แม้ในเชิง Business Logic จะดูไม่สอดคล้องกัน
-
-Test Suite จึงมี Characterization Test เพื่อบันทึก Scope ของ Contract ปัจจุบัน
-
-```ts
-it("documents that cross-field pagination consistency is not enforced", ...)
-```
-
-หากระบบ Production ต้องการ Constraint เช่น
-
-```text
-todos.length <= limit
-total >= todos.length
-```
-
-ควรเพิ่ม `.refine()` หรือ `.superRefine()` ใน Production Schema แล้วเปลี่ยน Characterization Test ตาม Requirement ใหม่
+ถ้า Business Requirement ภายหลังต้องบังคับ Relationship เหล่านี้ ต้องเพิ่ม `.refine()` หรือ `.superRefine()` และปรับ Test ให้ตรงกับ Contract ใหม่
 
 ---
 
-## 13. `randomTodosSchema`: Boundary Value Analysis
+## 10.4 `randomTodosSchema`
+
+Schema
 
 ```ts
 z.array(todoSchema).min(1).max(10)
 ```
 
-ช่วงสำคัญคือ
+Boundary ที่สำคัญคือ
 
 ```text
-0     → Invalid
-1     → Valid Minimum Boundary
-2–9   → Valid Range
-10    → Valid Maximum Boundary
-11    → Invalid
+0      → Reject
+1      → Accept: Minimum
+2–9    → Accept
+10     → Accept: Maximum
+11     → Reject
 ```
 
-ไม่จำเป็นต้องสร้าง Test แยกสำหรับทุกจำนวน 1 ถึง 10 เพราะ 2–9 อยู่ใน Equivalence Class เดียวกัน จึงเลือกค่า Representative เช่น `5`
+ไม่จำเป็นต้องเขียน Case 1–10 ทุกค่า เพราะกฎของ Schema เป็น Range การตรวจ Minimum, Maximum และค่าที่อยู่นอก Boundary ทั้งสองด้านเพียงพอสำหรับ Rule นี้
 
-นี่ทำให้ Test Suite ครอบคลุมกฎโดยไม่สร้าง Test ที่ซ้ำซ้อนโดยไม่มีประโยชน์
+แต่สมาชิกทุกตัวใน Array ยังต้องผ่าน `todoSchema` ดังนั้นมี Test Invalid Nested Todo แยกด้วย
 
 ---
 
-## 14. `createTodoInputSchema`: Input Contract ต้อง Strict กว่า Response
+## 10.5 `createTodoInputSchema`
 
-Response Contract ใช้
-
-```ts
-z.coerce.number()
-```
-
-แต่ Create Input ใช้
+Create Input เข้มงวดกว่าฝั่ง Response
 
 ```ts
-userId: z.number().int().positive()
+z.object({
+  todo: z.string().trim().min(3).max(300),
+  completed: z.boolean(),
+  userId: z.number().int().positive(),
+});
 ```
 
-จึงมีพฤติกรรมต่างกันโดยตั้งใจ
-
-```mermaid
-flowchart LR
-    A[External API Response] --> B[Response Schema]
-    B -->|Coerce| C[Normalized Domain Data]
-
-    D[Application Command] --> E[Create Input Schema]
-    E -->|Strict Number| F[API Request]
-```
-
-ดังนั้น
+จุดสำคัญคือ `userId` ใช้ `z.number()` ไม่ใช่ `z.coerce.number()`
 
 ```text
-Response userId = "10" → ผ่านและ Normalize
-Create userId = "10"   → ไม่ผ่าน
+Response Contract
+"10" → 10 → Accept
+
+Create Command Contract
+"10" → Reject
 ```
 
-Test ที่ตรวจว่า Create Input ไม่ Coerce String จึงเป็น Architectural Test ไม่ใช่เพียง Edge Case เล็ก ๆ
+นี่คือ Architectural Decision ที่ควรถูก Lock ด้วย Test เพราะ Application เป็นเจ้าของ Command Input เอง จึงสามารถบังคับ Type ให้เข้มงวดกว่าข้อมูลที่มาจาก External API
 
----
-
-## 15. String Boundary ของ Create และ Update
-
-กฎคือ
-
-```ts
-z.string().trim().min(3).max(300)
-```
-
-Boundary ที่ต้องตรวจคือ
-
-```text
-2 chars   → Invalid
-3 chars   → Valid
-300 chars → Valid
-301 chars → Invalid
-```
-
-และต้องจำว่า `.trim()` ทำงานก่อน `.min()`
+String Boundary ต้องทดสอบหลัง `trim()` ด้วย
 
 ```text
 "  ab  "
    ↓ trim
 "ab"
    ↓ min(3)
-Invalid
+Reject
 ```
 
-ดังนั้น Test Case `"  ab  "` มีคุณค่ามากกว่า Test แค่ `"ab"` เพราะพิสูจน์ทั้ง Transformation และ Boundary Rule ใน Case เดียว
+และต้องตรวจขอบ 3 กับ 300 ตัวอักษรโดยตรง
 
 ---
 
-## 16. `updateTodoInputSchema`: Partial แต่ห้าม Empty
+## 10.6 `updateTodoInputSchema`
 
-Schema ถูกสร้างจาก
+Update Contract สร้างจาก Create Contract
 
 ```ts
 createTodoInputSchema
@@ -1421,241 +1370,331 @@ Flow คือ
 ```mermaid
 flowchart TD
     A[Update Input] --> B[Pick todo / completed]
-    B --> C[Make Fields Optional]
-    C --> D{มีอย่างน้อยหนึ่ง Field?}
+    B --> C[Partial: แต่ละ Field Optional]
+    C --> D{มีอย่างน้อยหนึ่ง Field หรือไม่}
     D -->|Yes| E[Valid PATCH Payload]
     D -->|No| F[Reject]
 ```
 
-ดังนั้น
+Valid Shape คือ
 
 ```ts
-{ todo: "Updated todo" }       // ผ่าน
-{ completed: true }            // ผ่าน
-{ todo: "Updated", completed: true } // ผ่าน
-{}                              // ไม่ผ่าน
-{ userId: 20 }                  // ถูก Strip จนเหลือ {} แล้วไม่ผ่าน Refine
+{ todo: "Updated todo" }
 ```
 
-แต่กรณี
+หรือ
+
+```ts
+{ completed: true }
+```
+
+หรือ
+
+```ts
+{ completed: false }
+```
+
+หรือ
 
 ```ts
 {
   todo: "Updated todo",
-  userId: 20,
+  completed: true,
 }
 ```
 
-จะผ่าน เพราะ `todo` เป็น Valid Field และ `userId` ถูก Strip ออกจาก Output ตามพฤติกรรม Default ของ `z.object()`
+แต่
 
-Test Suite จึงครอบคลุมทั้งสองกรณี
+```ts
+{}
+```
+
+ต้อง Reject
+
+Test ยังตรวจ Error Message ของ `.refine()` ด้วย เพื่อให้ Business Rule ที่สำคัญนี้ไม่หายไปโดยไม่ตั้งใจ
+
+Unknown Field เพียงอย่างเดียวจะถูก Strip ก่อน Refine จนเหลือ `{}` และจึงถูก Reject
+
+```text
+{ userId: 20, id: 99 }
+          ↓ Zod object strip
+{}
+          ↓ refine
+Reject
+```
+
+หากมี Field ที่ถูกต้องร่วมด้วย Unknown Field จะถูก Strip แต่ Payload ยังผ่าน
+
+```text
+{
+  todo: "Updated todo",
+  userId: 999
+}
+
+        ↓
+
+{
+  todo: "Updated todo"
+}
+```
 
 ---
 
-## 17. `deletedTodoSchema`: Composition Contract
+## 10.7 `deletedTodoSchema`
+
+Delete Response เป็น Schema Composition
 
 ```ts
-export const deletedTodoSchema = todoSchema.extend({
+todoSchema.extend({
   isDeleted: z.literal(true),
   deletedOn: z.iso.datetime(),
 });
 ```
 
-Schema นี้ประกอบจากสองส่วน
+จึงต้องพิสูจน์ว่า
 
-```text
-Valid Todo
-+
-isDeleted === true
-+
-Valid ISO Datetime
-```
+1. กฎของ `todoSchema` ยังทำงาน
+2. `isDeleted` ต้องเป็น `true` เท่านั้น
+3. `deletedOn` ต้องเป็น ISO DateTime
+4. Transformation จาก Base Schema เช่น Numeric Coercion และ `trim()` ยังทำงาน
 
-`z.literal(true)` แตกต่างจาก `z.boolean()`
+`z.literal(true)` ต่างจาก `z.boolean()`
 
 ```text
 z.boolean()
-true  → ผ่าน
-false → ผ่าน
+true  → Accept
+false → Accept
 
 z.literal(true)
-true  → ผ่าน
-false → ไม่ผ่าน
+true  → Accept
+false → Reject
 ```
 
-จึงต้อง Test `false` โดยเฉพาะ เพื่อพิสูจน์ว่า Delete Response อยู่ใน State ที่ Server ยืนยันว่าลบแล้วจริง
+ดังนั้น Test `isDeleted: false` เป็น Contract Case ที่จำเป็น
 
 ---
 
-## 18. `randomTodoCountSchema`: ไม่มี Coercion
+## 10.8 `randomTodoCountSchema`
+
+Schema
 
 ```ts
 z.number().int().min(1).max(10)
 ```
 
-Schema นี้รับ Number จริงเท่านั้น
+ต้องตรวจ
 
-```text
-5   → ผ่าน
-"5" → ไม่ผ่าน
-```
+- 1 ผ่าน
+- 10 ผ่าน
+- ค่ากลางผ่าน
+- 0 และค่าติดลบไม่ผ่าน
+- 11 ขึ้นไปไม่ผ่าน
+- Decimal ไม่ผ่าน
+- Numeric String ไม่ถูก Coerce
+- `NaN`, `Infinity`, `-Infinity` ไม่ผ่าน
 
-นอกจากนี้ Test ยังครอบคลุม
-
-- `NaN`
-- `Infinity`
-- `-Infinity`
-- Decimal
-- Boolean
-- `null`
-- `undefined`
-- Object
-- Array
-
-เพื่อให้ Parameter Boundary มีพฤติกรรมชัดเจน
+การทดสอบ Numeric String สำคัญเพราะ Schema นี้ตั้งใจรับ Internal Number ไม่ใช่ข้อมูล External API ที่ต้อง Normalize
 
 ---
 
-## 19. Type-level Contract Test ด้วย `expectTypeOf`
+## 10.9 Type-level Contract
 
-Zod Schema ในโมดูลนี้ทำหน้าที่สองอย่าง
-
-```text
-Runtime Schema
-      ↓
-z.infer
-      ↓
-TypeScript Type
-```
-
-ดังนั้นนอกจาก Runtime Behavior แล้ว ควร Lock รูปร่างของ Type ที่ Public Contract ใช้ด้วย
+Production Code ใช้ `z.infer` เพื่อให้ TypeScript Type มาจาก Runtime Schema ชุดเดียวกัน
 
 ```ts
-expectTypeOf<Todo>().toEqualTypeOf<{
-  id: number;
-  todo: string;
-  completed: boolean;
-  userId: number;
-}>();
+export type Todo = z.infer<typeof todoSchema>;
 ```
 
-ข้อดีคือถ้ามีคนแก้ Schema แล้ว Type เปลี่ยนโดยไม่ตั้งใจ Type-level Test จะ Fail ตอน Type Checking/Test Compilation
-
-### ข้อสังเกตของ `UpdateTodoInput`
-
-Runtime Schema บังคับว่า Object ต้องมีอย่างน้อยหนึ่ง Field ด้วย `.refine()` แต่ TypeScript Type ที่ Infer ออกมาจะยังเป็น
+Vitest มี `expectTypeOf()` ซึ่งช่วยยืนยันว่า Output จาก `parse()` ยังคงตรงกับ Type ที่ Export ออกไป
 
 ```ts
-{
-  todo?: string;
-  completed?: boolean;
-}
+const result = todoSchema.parse(validTodo);
+
+expectTypeOf(result).toEqualTypeOf<Todo>();
 ```
 
-Type System จึงยัง Represent `{}` ได้ในระดับ Compile-time
-
-กฎ "อย่างน้อยหนึ่ง Field" เป็น Runtime Invariant ที่ Schema รับผิดชอบ ไม่ได้ถูก Encode เป็น Non-empty Type
+Test กลุ่มนี้ไม่ได้แทน Runtime Validation แต่ช่วยป้องกันการแยกกันระหว่าง Contract ที่ Execute ตอน Runtime กับ Type ที่ทีมใช้ตอน Compile-time
 
 ---
 
-## 20. ทำไมใช้ `it.each()`
+# 11. Unknown Fields และ `.strict()`
 
-Validation Test มักมี Test Logic เดียวกันแต่ Input หลายค่า
-
-แทนการเขียน
-
-```ts
-it("rejects zero", ...);
-it("rejects negative", ...);
-it("rejects decimal", ...);
-it("rejects string", ...);
-```
-
-ใช้ Table-driven Testing
-
-```ts
-it.each([
-  ["zero", 0],
-  ["negative integer", -1],
-  ["decimal", 1.5],
-  ["invalid string", "abc"],
-])("rejects invalid id: %s", (_, id) => {
-  // assertion เดียวกัน
-});
-```
-
-ข้อดี
-
-- ลด Duplicate Test Code
-- เพิ่ม Case ใหม่ได้ง่าย
-- เห็น Input Class ทั้งหมดในตำแหน่งเดียว
-- Test Report ยังแสดงแต่ละ Case แยกกัน
-
----
-
-## 21. Unknown Fields และ `.strict()`
-
-`z.object()` โดย Default จะ Strip Unknown Keys ออกจาก Parsed Output แทนการ Reject
+Zod Object ใน Contract ปัจจุบัน Strip Unknown Field โดย Default
 
 ตัวอย่าง
 
 ```ts
-todoSchema.parse({
+const result = todoSchema.parse({
   id: 1,
   todo: "Buy milk",
   completed: false,
   userId: 10,
-  unexpected: "ignored",
+  admin: true,
 });
 ```
 
-Output จะไม่มี `unexpected`
+Output จะไม่มี `admin`
 
-Test Suite จึง Lock พฤติกรรมนี้ไว้
+```ts
+{
+  id: 1,
+  todo: "Buy milk",
+  completed: false,
+  userId: 10,
+}
+```
 
-หาก Production Requirement ต้องการ Reject Unknown Fields ให้เปลี่ยน Production Schema ไปใช้ Strict Object Policy แล้วปรับ Test ให้คาดหวัง Failure แทน
+Test Suite จึงมี Test เพื่อ Lock พฤติกรรมนี้ไว้
 
-การตัดสินใจระหว่าง Strip และ Reject ควรเป็น Explicit Contract Decision ไม่ควรปล่อยให้ทีมตีความต่างกัน
+ถ้า Requirement เปลี่ยนเป็น “มี Field เกิน Contract ต้อง Reject ทันที” ต้องเปลี่ยน Schema เป็น Strict Object ตาม API ของ Zod ที่เลือกใช้ แล้วเปลี่ยน Test จากการคาดหวังว่า Field ถูก Strip เป็นคาดหวัง `success === false`
+
+การเลือก Strip หรือ Strict ควรเป็น Decision ที่ตั้งใจ ไม่ควรเกิดจาก Default Behavior โดยทีมไม่รู้ตัว
 
 ---
 
-## 22. สิ่งที่ไม่ควร Test ซ้ำใน `client.test.ts`
+# 12. ข้อควรระวังของ `z.coerce.number()`
 
-Responsibility ควรแยกดังนี้
+Contract ฝั่ง Response ใช้
 
-```mermaid
-flowchart TD
-    A[contract.test.ts] --> B[Zod Rules]
-    A --> C[Normalization]
-    A --> D[Boundary Values]
-    A --> E[Invalid Runtime Shapes]
-    A --> F[Inferred Types]
-
-    G[client.test.ts] --> H[HTTP Method / URL]
-    G --> I[Request Payload]
-    G --> J[AbortSignal]
-    G --> K[Response Parsing Integration]
-    G --> L[API_CONTRACT_ERROR Mapping]
+```ts
+z.coerce.number().int().positive()
 ```
 
-`client.test.ts` ควรมี Invalid Response Representative Case เพื่อพิสูจน์ว่า Client ใช้ Contract จริง แต่ไม่ต้อง Copy Edge Case ของ Schema ทั้งหมดไป Test ซ้ำ
+เพื่อรองรับ Number และ Numeric String จาก External API แต่ `z.coerce.number()` อาศัย JavaScript Number Coercion ซึ่งรับ Input ได้กว้างกว่าสองชนิดนี้
 
-ตัวอย่าง
+ตัวอย่างแนวคิด
 
 ```text
-contract.test.ts
-  → พิสูจน์ว่า todo="" ถูก todoSchema Reject
-
-client.test.ts
-  → จำลอง API ส่ง todo="" เพียงหนึ่ง Case
-  → พิสูจน์ว่า Client แปลง ZodError เป็น API_CONTRACT_ERROR
+"10" → 10
+""   → 0
+true → 1
 ```
 
-นี่ช่วยให้ Test Suite เร็วและลด Maintenance Cost
+ใน Contract ปัจจุบัน `""` จะถูก `positive()` ปฏิเสธเพราะกลายเป็น `0` แต่ Input บางชนิดอาจถูก Coerce เป็นจำนวนที่ผ่าน Rule ได้
+
+ดังนั้น Production System ที่ต้องการ Contract แบบ
+
+```text
+number OR numeric string เท่านั้น
+```
+
+ควร Harden Schema เพิ่ม ไม่ควรตีความ `z.coerce.number()` ว่าเท่ากับ Union ของ Number และ Numeric String โดยอัตโนมัติ
+
+Test Suite ในเอกสารนี้ Lock Business Rules ที่ Contract ปัจจุบันประกาศไว้ แต่ไม่เพิ่ม Test ที่ทำให้ Accidental Coercion กลายเป็น Business Requirement
+
+ถ้า Harden Schema ในอนาคต ควรเพิ่ม Security/Robustness Cases เช่น
+
+```text
+true
+false
+null
+[]
+{}
+```
+
+และคาดหวังว่า Reject ทั้งหมด
 
 ---
 
-## 23. รัน Test
+# 13. ข้อควรระวังของ Empty PATCH และ `undefined`
+
+Contract ปัจจุบันใช้
+
+```ts
+.refine((value) => Object.keys(value).length > 0)
+```
+
+เพื่อป้องกัน `{}`
+
+ใน Production ควรระวัง Input ที่มี Key แต่ Value เป็น `undefined` เช่น
+
+```ts
+{
+  todo: undefined,
+}
+```
+
+เพราะคำถามทาง Business จริงไม่ใช่เพียง “Object มี Key หรือไม่” แต่คือ “มีค่าที่จะ Update จริงหรือไม่”
+
+หาก Application สามารถสร้าง Payload รูปแบบนี้ได้ ควร Harden Contract ให้ตรวจ Effective Update Value และเพิ่ม Test แยก
+
+ตัวอย่าง Requirement ที่แข็งแรงกว่า
+
+```text
+{}                         → Reject
+{ todo: undefined }        → Reject
+{ completed: undefined }   → Reject
+{ todo: "Updated todo" }   → Accept
+{ completed: false }       → Accept
+```
+
+อย่าเพิ่ม Expected Behavior นี้ใน Test หลักจนกว่า Schema จะถูกแก้ให้รองรับ Requirement ดังกล่าว ไม่เช่นนั้น Test Suite จะ Fail โดยตั้งใจ
+
+---
+
+# 14. Unit Contract Test ต่างจาก API Client Integration Test อย่างไร
+
+สอง Layer นี้ไม่ควร Test ซ้ำทุก Case
+
+```mermaid
+flowchart BT
+    A[contracts.test.ts] --> B[Pure Zod Contract]
+    C[client.test.ts] --> D[HTTP + MSW + Contract Integration]
+    E[Component Test] --> F[Feature Interaction]
+    G[E2E] --> H[Critical User Journey]
+
+    B --> D
+    D --> F
+    F --> H
+```
+
+`contracts.test.ts` ควรมี Validation Edge Cases ละเอียดที่สุด
+
+ตัวอย่างสิ่งที่อยู่ที่นี่
+
+```text
+min/max
+trim
+coerce
+required fields
+wrong type
+nested schema
+unknown fields
+literal values
+type inference
+```
+
+ส่วน `client.test.ts` ควรตรวจว่าฝั่ง HTTP ใช้ Contract จริง เช่น
+
+```text
+MSW ส่ง Invalid Todo
+        ↓
+client.ts
+        ↓
+todoSchema.parse(...)
+        ↓
+ZodError
+        ↓
+ApplicationError(code = API_CONTRACT_ERROR)
+```
+
+ไม่จำเป็นต้อง Test ทุก `todoSchema` Edge Case ซ้ำใน `client.test.ts` เพราะรายละเอียดเหล่านั้นถูก Lock ไว้ใน `contracts.test.ts` แล้ว
+
+---
+
+# 15. รัน Test
+
+รัน Contract Test โดยตรง
+
+```bash
+bun run test:contracts
+```
+
+หรือ
+
+```bash
+bunx vitest run src/features/todos/api/contracts.test.ts
+```
 
 รัน Test ทั้งโปรเจ็กต์
 
@@ -1663,252 +1702,238 @@ client.test.ts
 bun run test
 ```
 
-รันเฉพาะ Contract Test
+Watch Mode
 
 ```bash
-bunx vitest run src/features/todos/api/contract.test.ts
+bun run test:watch
 ```
 
-เปิด Watch Mode เฉพาะไฟล์
+Coverage
 
 ```bash
-bunx vitest src/features/todos/api/contract.test.ts
+bun run test:coverage
 ```
 
-รันพร้อม Coverage
+ระหว่างพัฒนา Schema สามารถรันเฉพาะไฟล์นี้เพื่อลด Feedback Loop
 
-```bash
-bunx vitest run src/features/todos/api/contract.test.ts --coverage
+```text
+แก้ contracts.ts
+      ↓
+bun run test:contracts
+      ↓
+ผ่าน → ทำงานต่อ
+ไม่ผ่าน → ตรวจ Contract/Test Requirement
 ```
 
 ---
 
-## 24. อ่านผล Test
+# 16. Coverage
 
-เมื่อ Test ผ่านทั้งหมด ผลลัพธ์โดยหลักควรมีลักษณะ
+Coverage มีประโยชน์ในการตรวจว่า Code Path ถูก Execute แต่ **100% Coverage ไม่ได้แปลว่า Contract ถูกต้อง**
 
-```text
-✓ src/features/todos/api/contract.test.ts
+ตัวอย่าง Test นี้อาจทำให้บรรทัดถูก Cover
 
-Test Files  1 passed
-Tests       ... passed
+```ts
+expect(() => todoSchema.parse(validTodo)).not.toThrow();
 ```
 
-จำนวน Test จริงอาจเปลี่ยนได้เมื่อมีการเพิ่ม/ลด Case ผ่าน `it.each()`
-
-สิ่งสำคัญไม่ใช่จำนวน Test แต่คือทุก Rule และ Boundary ของ Contract ถูก Represent อยู่ใน Test Suite
-
----
-
-## 25. Coverage ที่ควรสนใจ
-
-สำหรับ Schema file ขนาดเล็ก Statement Coverage 100% มักทำได้ไม่ยาก แต่ Coverage Percentage ไม่ควรเป็นเป้าหมายเพียงอย่างเดียว
-
-ตัวอย่าง Test Suite ที่มี Coverage 100% แต่ตรวจเพียง Happy Path อาจไม่สามารถจับ Regression ของ Boundary ได้
-
-ควรประเมินสองมิติพร้อมกัน
+แต่ไม่ได้พิสูจน์ว่า
 
 ```text
-Code Coverage
+id numeric string ถูก normalize หรือไม่
+trim ทำงานหรือไม่
+0 ถูก reject หรือไม่
+completed string ถูก reject หรือไม่
+```
+
+ดังนั้น Validation Code ควรใช้ทั้ง
+
+```text
+Coverage
 +
-Behavioral Coverage
+Boundary Analysis
++
+Equivalence Partitioning
++
+Invalid Type Matrix
++
+Transformation Assertions
 ```
 
-Behavioral Coverage ของ Contract นี้ควรครอบคลุมอย่างน้อย
-
-- Valid Data
-- Normalized Data
-- Minimum Boundary
-- Maximum Boundary
-- Just-below Boundary
-- Just-above Boundary
-- Wrong Primitive Type
-- Missing Required Field
-- Invalid Nested Item
-- Empty Collection
-- Oversized Collection
-- Unknown Field Policy
-- Runtime Refinement
-- Type Inference
+เป้าหมายที่สำคัญกว่าตัวเลข Coverage คือทุก Business Rule ใน `contracts.ts` มี Test ที่อธิบาย Intent ของ Rule นั้นได้
 
 ---
 
-## 26. Regression ที่ Test Suite นี้ช่วยจับ
+# 17. Quality Gate ที่แนะนำ
 
-ตัวอย่างการเปลี่ยน Production Code ที่ Test ควรตรวจพบ
+หลังเพิ่ม Vitest ให้ Quality Gate ของโปรเจ็กต์รวม Unit Test ด้วย
 
-### เปลี่ยน `positive()` เป็น `nonnegative()` โดยไม่ตั้งใจ
-
-```diff
-- id: z.coerce.number().int().positive()
-+ id: z.coerce.number().int().nonnegative()
-```
-
-Test `id=0` จะ Fail และแจ้งทันทีว่า Contract เปลี่ยน
-
-### ลบ `.trim()`
-
-```diff
-- todo: z.string().trim().min(1)
-+ todo: z.string().min(1)
-```
-
-Normalization Test และ Blank-whitespace Test จะจับ Regression
-
-### เปลี่ยน Random Count สูงสุด
-
-```diff
-- .max(10)
-+ .max(20)
-```
-
-Test ที่คาดว่า `11` ต้อง Fail จะเปิดเผย Contract Change
-
-### ลบ Runtime Refine ของ Update
-
-```diff
-- .refine((value) => Object.keys(value).length > 0, ...)
-```
-
-Test `{}` จะ Fail ทันที
-
-### เปลี่ยน Create `userId` เป็น Coercion
-
-```diff
-- userId: z.number().int().positive()
-+ userId: z.coerce.number().int().positive()
-```
-
-Test `userId="10"` ที่ต้อง Reject จะจับ Architectural Change
-
----
-
-## 27. Production Hardening ที่ควรพิจารณาในอนาคต
-
-Test ในเอกสารนี้ยึด Contract ปัจจุบันเป็น Source of Truth แต่มีจุดที่ Production System อาจต้อง Harden เพิ่ม
-
-### 27.1 จำกัด Coercion Input ให้แคบลง
-
-ถ้า API Contract อนุญาตเพียง Number และ Numeric String ควรป้องกัน Input เช่น Boolean ไม่ให้ถูก Number Coercion
-
-### 27.2 กำหนด Maximum Length ของ Response Todo
-
-ปัจจุบัน `todoSchema` ตรวจเพียง `.min(1)` ฝั่ง Response หากต้องป้องกัน Payload ผิดปกติอาจเพิ่ม Upper Bound
-
-### 27.3 Cross-field Pagination Validation
-
-หาก API Guarantee ความสัมพันธ์ระหว่าง `total`, `limit`, `skip` และ `todos.length` ควร Encode Invariant นี้ใน Schema
-
-### 27.4 Unknown Field Policy
-
-พิจารณาว่าระบบต้องการ
+แนวคิด
 
 ```text
-Strip Unknown Keys
+Format
+  ↓
+Lint
+  ↓
+Typecheck
+  ↓
+Unit / Integration Tests
+  ↓
+Build
 ```
 
-หรือ
+ตัวอย่าง Script
 
-```text
-Reject Unknown Keys
+```json
+{
+  "scripts": {
+    "test": "vitest run",
+    "check": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build"
+  }
+}
 ```
 
-ให้ชัดเจนตาม Compatibility Policy ของ Backend
-
-### 27.5 Date-time Policy
-
-ควรกำหนดว่า `deletedOn` ยอมรับเฉพาะ UTC หรือรองรับ Offset Timezone และเขียน Boundary Test ให้ตรงกับ API Contract จริง
-
-เมื่อ Requirement เหล่านี้เปลี่ยน ต้องเปลี่ยน Production Schema และ Test พร้อมกัน ไม่ควรแก้ Test เพียงเพื่อให้ Pipeline ผ่าน
+ใน CI ควรใช้ `vitest run` ไม่ใช้ Watch Mode เพื่อให้ Process จบพร้อม Exit Code ที่ชัดเจน
 
 ---
 
-## 28. Test Maintenance Rule
+# 18. เมื่อ Contract เปลี่ยน ต้องแก้ Test อย่างไร
 
-เมื่อแก้ `contracts.ts` ให้ใช้ Checklist นี้
+สมมติ Todo เพิ่ม `priority`
 
-```text
-[ ] เพิ่ม/แก้ Happy Path Test
-[ ] เพิ่ม/แก้ Normalization Test
-[ ] ตรวจ Minimum Boundary
-[ ] ตรวจ Maximum Boundary
-[ ] ตรวจ Invalid Type
-[ ] ตรวจ Missing Required Field
-[ ] ตรวจ Nested Contract ถ้ามี
-[ ] ตรวจ Unknown Field Policy
-[ ] ตรวจ Refinement / Cross-field Rule
-[ ] ตรวจ z.infer Type ด้วย expectTypeOf
-[ ] รัน Contract Test
-[ ] รัน Full Test Suite
-[ ] รัน Typecheck / Quality Gate
+```ts
+priority: z.enum(["low", "medium", "high"])
 ```
 
-Contract และ Test ต้องเปลี่ยนเป็น Atomic Change เดียวกัน เพื่อป้องกันสถานการณ์ที่ Runtime Contract เปลี่ยนแต่ Test Suite ยังบันทึก Behavior เก่า
+ควรทำตามลำดับ
+
+```text
+1. เพิ่ม/แก้ Requirement
+2. แก้ contracts.ts
+3. เพิ่ม Happy Path Fixture
+4. เพิ่ม Invalid Value Cases
+5. เพิ่ม Missing Field Case ถ้า Required
+6. ตรวจ Schema ที่ Compose todoSchema
+7. ตรวจ Type-level Assertions
+8. รัน contracts.test.ts
+9. รัน client.test.ts
+10. รัน Full Quality Gate
+```
+
+อย่าแก้ Test เพียงเพื่อให้สีเขียวโดยไม่เข้าใจว่า Contract Requirement เปลี่ยนจริงหรือไม่
+
+Test ที่ Fail หลังเปลี่ยน Schema มีหน้าที่บอกว่า
+
+> พฤติกรรมที่เคยรับประกันไว้เปลี่ยนไปแล้ว กรุณาตัดสินใจว่านี่คือการเปลี่ยน Requirement หรือ Bug
 
 ---
 
-## 29. Recommended Development Flow
+# 19. Naming Convention ของ Test
 
-```mermaid
-flowchart TD
-    A[อ่าน API Requirement] --> B[แก้ contracts.ts]
-    B --> C[เพิ่ม/แก้ contract.test.ts]
-    C --> D[Run Targeted Vitest]
-    D -->|Fail| B
-    D -->|Pass| E[Run Full Vitest]
-    E -->|Pass| F[Run Typecheck / Lint / Build]
-    F -->|Pass| G[Commit Contract + Test Together]
+ชื่อ Test ควรบอกพฤติกรรม ไม่ควรบอก Implementation Detail เกินจำเป็น
+
+แนะนำ
+
+```ts
+it("rejects todo shorter than three characters after trimming", ...)
 ```
 
-ระหว่างพัฒนาให้เริ่มจาก Targeted Test เพื่อ Feedback ที่เร็ว
+ดีกว่า
 
-```bash
-bunx vitest src/features/todos/api/contract.test.ts
+```ts
+it("works correctly", ...)
 ```
 
-ก่อน Merge ให้รันอย่างน้อย
+และดีกว่า
 
-```bash
-bun run test
-bun run check
+```ts
+it("calls Zod min", ...)
 ```
 
-หาก Repository เพิ่ม Test เข้า `check` หรือ CI Quality Gate แล้ว ให้ใช้คำสั่งมาตรฐานของ Repository เป็น Source of Truth
+เพราะสิ่งที่เราต้องการ Lock คือ Contract ไม่ใช่ว่า Library ภายในเรียก Method ชื่ออะไร
+
+Pattern ที่ใช้ได้ดีคือ
+
+```text
+accepts ...
+rejects ...
+normalizes ...
+coerces ...
+strips ...
+requires ...
+keeps ... aligned ...
+```
 
 ---
 
-## 30. สรุป
+# 20. Production Checklist
 
-`contract.test.ts` เป็น Unit Test ที่ป้องกัน Runtime Boundary ของ Todos Feature โดยตรง
+ก่อนถือว่า `contracts.test.ts` พร้อมใช้งาน ให้ตรวจรายการต่อไปนี้
 
-หน้าที่หลักคือพิสูจน์ว่า
+- [ ] Test อยู่ที่ `src/features/todos/api/contracts.test.ts`
+- [ ] ไม่มี Network Request
+- [ ] ไม่มี Axios
+- [ ] ไม่มี MSW
+- [ ] ไม่มี React/DOM
+- [ ] ทุก Schema มี `describe()` ของตัวเอง
+- [ ] มี Happy Path
+- [ ] มี Invalid Type
+- [ ] มี Invalid Value
+- [ ] มี Minimum/Maximum Boundary เมื่อ Schema มี Range
+- [ ] มี Transformation Assertion สำหรับ `.trim()` และ Coercion
+- [ ] มี Required Field Cases
+- [ ] Nested Schema Failure ถูกทดสอบ
+- [ ] Unknown Field Behavior ถูกทดสอบและเป็น Decision ที่ตั้งใจ
+- [ ] Input Contract กับ Response Contract ถูกทดสอบแยกกัน
+- [ ] `updateTodoInputSchema` ปฏิเสธ Empty Update
+- [ ] `completed: false` ใน Update ยังถือเป็น Valid Update
+- [ ] `deletedTodoSchema` ตรวจ Literal `true` และ ISO DateTime
+- [ ] `randomTodoCountSchema` ไม่ Coerce Numeric String
+- [ ] Runtime Schema และ Exported Types มี Type-level Assertions
+- [ ] Test Names อธิบาย Behavior ได้โดยไม่ต้องเปิด Implementation
+- [ ] `bun run test:contracts` ผ่าน
+- [ ] `bun run test` ผ่าน
+- [ ] `bun run typecheck` ผ่าน
+- [ ] `bun run lint` ผ่าน
+- [ ] `bun run build` ผ่าน
+
+---
+
+# 21. สรุป
+
+`contracts.test.ts` คือ Safety Net ของ Runtime Boundary
 
 ```text
-Unknown Data
-   ↓
-Zod Contract
-   ↓
-Validation + Normalization
-   ↓
-Stable Typed Data
+External / Untrusted Data
+        ↓
+contracts.ts
+        ↓
+Validated + Normalized Data
+        ↓
+Application
 ```
 
-Test Suite ที่ดีต้องไม่ได้ตรวจเพียงว่า Schema "รับข้อมูลปกติได้" แต่ต้อง Lock Rules ที่สำคัญทั้งหมด ได้แก่
+และ Test ทำหน้าที่คุม Contract อีกชั้น
 
-- Type
-- Required Fields
-- Coercion
-- Transformation
-- Minimum / Maximum
-- Integer / Positive / Nonnegative
-- Nested Validation
-- Array Cardinality
-- Partial Update Invariant
-- Literal State
-- ISO Datetime
-- Unknown Field Policy
-- Type Inference
+```text
+Business Requirement
+        ↓
+contracts.test.ts
+        ↓
+contracts.ts
+        ↓
+Runtime Data
+```
 
-เมื่อ Contract Test ทำหน้าที่ของตัวเองครบ `client.test.ts` จึงสามารถโฟกัสที่ HTTP Integration, Response Parsing และ Error Mapping โดยไม่ต้อง Duplicate Validation Matrix ทั้งชุด
+หลักสำคัญคือ
 
-โครงสร้างนี้ทำให้ Test Suite มีขอบเขตชัดเจน รันเร็ว ดูแลรักษาง่าย และช่วยให้ API Contract เป็น Executable Specification ที่เชื่อถือได้ในระดับ Production
+1. Test **พฤติกรรมของ Contract** ไม่ใช่ Test ตัว Library Zod
+2. ตรวจทั้ง Valid, Invalid, Boundary และ Transformation
+3. Response Schema สามารถ Normalize External Data ได้ แต่ Command/Input Schema ควรเข้มงวดตามข้อมูลที่ Application ควบคุมได้
+4. Schema Composition ต้องมี Test ว่ากฎจาก Base Schema ยังทำงาน
+5. Unit Contract Test ต้องเร็ว, Deterministic และไม่มี External Dependency
+6. HTTP Integration ไม่ควรอยู่ในไฟล์นี้ แต่ให้ `client.test.ts` รับผิดชอบ
+7. `z.infer` ควรถูกคุมด้วย Type-level Assertion เพื่อให้ Runtime Contract และ Compile-time Type เดินไปด้วยกัน
+8. เมื่อ Contract เปลี่ยน ต้องทบทวน Test พร้อม Requirement ไม่ใช่แก้ Expected Value เพื่อให้ Test ผ่านอย่างเดียว
+
+เมื่อ Test Suite นี้ผ่าน เราจะมั่นใจได้ว่า Data ที่เข้าหรือออกจาก Todos Feature ผ่านกฎ Runtime Contract ตามที่ Application กำหนด ก่อนข้อมูลจะไปถึง API Client, TanStack Query Cache และ UI
