@@ -11,7 +11,7 @@
 เป้าหมายของ Contract Test ไม่ใช่การพิสูจน์ว่า Zod ทำงานได้ แต่คือการพิสูจน์ว่า **กฎของ Application ที่เราเขียนด้วย Zod ตรงกับ Runtime Contract ที่เราต้องการจริง**
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[unknown input] --> B[Zod Contract]
     B -->|valid| C[Validated / Normalized Data]
     B -->|invalid| D[ZodError]
