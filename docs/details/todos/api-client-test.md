@@ -22,7 +22,7 @@
 `client.ts` เป็น Boundary ระหว่าง Feature Todos กับ HTTP API ภายนอก จึงมีความรับผิดชอบมากกว่าการเรียก Axios
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[Caller] --> B[Todos API Client]
     B --> C[Validate Request Input]
     C --> D[Shared Axios Client]
