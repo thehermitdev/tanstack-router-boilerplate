@@ -59,7 +59,7 @@ randomTodoCountSchema
 แนวทางนี้จัด `describe()` ให้ตรงกับ Schema แบบ 1:1 และเพิ่ม Type-level Contract อีกหนึ่งกลุ่ม เพื่อให้เปิด `contracts.ts` และ `contracts.test.ts` เทียบกันได้ง่าย
 
 ```mermaid
-flowchart TD
+flowchart LR
     A[contracts.ts] --> B[todoSchema]
     A --> C[todosListResponseSchema]
     A --> D[randomTodosSchema]
