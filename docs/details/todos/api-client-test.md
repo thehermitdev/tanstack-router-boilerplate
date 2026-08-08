@@ -195,9 +195,7 @@ export default defineConfig({
 ```ts
 import { setupServer } from "msw/node";
 
-import { handlers } from "./handlers";
-
-export const server = setupServer(...handlers);
+export const server = setupServer();
 ```
 
 จากนั้นสร้าง `src/test/setup.ts`
